@@ -13,19 +13,4 @@
 # yarn-error.log
 # /.idea
 # /.vscode
-/vendor
-/node_modules
 .env
-.phpunit.result.cache
-/storage/*.key
-/public/hot
-/public/storage
-Homestead.json
-Homestead.yaml
-npm-debug.log
-yarn-error.log
-/.idea
-/.vscode
-.DS_Store
-Thumbs.db
-/composer.phar
