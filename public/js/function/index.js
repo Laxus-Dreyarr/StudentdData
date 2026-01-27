@@ -21,8 +21,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const userAvatar = document.getElementById('userAvatar');
     const dashboardUserName = document.getElementById('dashboardUserName');
     const dashboardUserEmail = document.getElementById('dashboardUserEmail');
-            
+
+    // Preload the background image for better performance
+    const registerBgImage = new Image();
+    registerBgImage.src = 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
+
+    // Get the left panel element
+    const leftPanel = document.querySelector('.left-panel');
+
     // Tab Switching
+    // In the tab button click event handler:
     tabButtons.forEach((button, index) => {
         button.addEventListener('click', function() {
             const target = this.getAttribute('data-target');
@@ -47,6 +55,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Hide alerts
             hideAlerts();
+
+            // Toggle register mode background
+            if (target === 'registerForm') {
+                leftPanel.classList.add('register-mode');
+            } else {
+                leftPanel.classList.remove('register-mode');
+            }
         });
     });
 

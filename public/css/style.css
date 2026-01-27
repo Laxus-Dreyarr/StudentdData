@@ -679,6 +679,42 @@ body::before {
     grid-column: span 2;
 }
 
+/* Registration state background for left panel */
+.left-panel.register-mode {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 140vh;
+}
+
+/* Optional: Add overlay for better text readability */
+.left-panel.register-mode::before {
+    background: rgba(0, 0, 0, 0.4);
+    background-image: none; /* Remove the pattern */
+}
+
+/* For smoother transition */
+
+/* Optionally fade out the pattern when in register mode */
+.left-panel.register-mode::before {
+    opacity: 0.5;
+}
+
+/* Optional: Slightly adjust text colors for better contrast */
+.left-panel.register-mode .panel-title,
+.left-panel.register-mode .feature-text h4 {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Optional: Enhance icon contrast */
+.left-panel.register-mode .feature-icon,
+.left-panel.register-mode .logo-icon {
+    background-color: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 @media (max-width: 1200px) {
     .activity-card {
 grid-column: span 1;
