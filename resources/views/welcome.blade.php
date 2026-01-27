@@ -41,7 +41,7 @@
                 
                 <div class="panel-content">
                     <h1 class="panel-title">Elevate Your Academic Journey</h1>
-                    <p class="panel-description">Access course materials, track assignments, collaborate with peers, and monitor your academic progress all in one place.</p>
+                    <p class="panel-description">Access course materials, and monitor your academic progress all in one place.</p>
                     
                     <div class="features-grid">
                         <div class="feature-item">
@@ -63,36 +63,16 @@
                                 <p>Monitor your academic performance with detailed analytics</p>
                             </div>
                         </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="feature-text">
-                                <h4>Collaboration</h4>
-                                <p>Connect with classmates and instructors easily</p>
-                            </div>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <div class="feature-text">
-                                <h4>Smart Schedule</h4>
-                                <p>Never miss a deadline with our intelligent calendar</p>
-                            </div>
-                        </div>
                     </div>
                     
                     <div class="stats">
                         <div class="d-flex gap-5">
                             <div>
-                                <h3 class="mb-1">50K+</h3>
+                                <h3 class="mb-1">8K+</h3>
                                 <p class="opacity-80">Active Students</p>
                             </div>
                             <div>
-                                <h3 class="mb-1">200+</h3>
+                                <h3 class="mb-1">80+</h3>
                                 <p class="opacity-80">Courses Available</p>
                             </div>
                             <div>
