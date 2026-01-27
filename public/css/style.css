@@ -685,7 +685,7 @@ body::before {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 140vh;
+    height: 230vh;
 }
 
 /* Optional: Add overlay for better text readability */

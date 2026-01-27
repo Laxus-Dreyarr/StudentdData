@@ -160,14 +160,96 @@
                                     <label class="form-label" for="firstName">First Name</label>
                                     <div class="input-group">
                                         <i class="fas fa-user input-icon"></i>
-                                        <input type="text" class="form-control" id="firstName" placeholder="John" required>
+                                        <input type="text" class="form-control" id="firstName" placeholder="Your given name..." required>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Last Name</label>
                                     <div class="input-group">
                                         <i class="fas fa-user input-icon"></i>
-                                        <input type="text" class="form-control" id="lastName" placeholder="Doe" required>
+                                        <input type="text" class="form-control" id="lastName" placeholder="Your family name" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Middle Name (Optional)</label>
+                                    <div class="input-group">
+                                        <i class="fas fa-user input-icon"></i>
+                                        <input type="text" class="form-control" id="lastName" placeholder="Your middle name" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Birthdate</label>
+                                    <div class="input-group">
+                                        <i class="fas fa-user input-icon"></i>
+                                        <input type="date" class="form-control" id="lastName" placeholder="Doe" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Sex</label>
+                                    <div class="input-group">
+                                        <select class="form-control">
+                                          <option value="Male">Male</option>
+                                          <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Status</label>
+                                    <div class="input-group">
+                                        <select class="form-control">
+                                          <option value="Single">Single</option>
+                                          <option value="Married">Married</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">House No. / Street</label>
+                                    <div class="input-group">
+                                        <i class="fas fa-user input-icon"></i>
+                                        <input type="text" class="form-control" id="houseStreet" placeholder="e.g., 123 Main St" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Region</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="region" onchange="loadProvinces(this.value)" required>
+                                          <option value="">Select Region</option>
+                                            @foreach(App\Helpers\PSGC::getRegions() as $region)
+                                                <option value="{{ $region['designation'] }}">{{ $region['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Province</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="province" onchange="loadMunicipalities(this.value)" required>
+                                          <option value="">Select Province</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Municipality/City</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="municipality" onchange="loadBarangays(this.value)" required>
+                                          <option value="">Select Municipality/City</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Barangay</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="barangay" required>
+                                          <option value="">Select Barangay</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lastName">Zip Code</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="zip-code" required>
+                                          <option value="">Select Barangay</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -401,6 +483,102 @@
     <!-- <script src="script.js"></script> -->
      <script src="{{asset('js/function/index.js')}}"></script>
     <script src="{{asset('js/sweetalert2.js')}}"></script>
+    <script src="{{ asset('js/psgc/psgc-handler.js') }}"></script>
+    <script src="{{ asset('js/psgc/smart-zip-codes.js') }}"></script>
+    <script>
+        // Initialize smart zip codes
+        smartZipCodes.load();
+        
+        function loadProvinces(regionDesignation) {
+            const provinceSelect = document.getElementById('province');
+            provinceSelect.innerHTML = '<option value="">Select Province</option>';
+            
+            // Clear dependent fields
+            document.getElementById('municipality').innerHTML = '<option value="">Select Municipality/City</option>';
+            document.getElementById('barangay').innerHTML = '<option value="">Select Barangay</option>';
+            document.getElementById('zip-code').innerHTML = '<option value="">Select Zip Code</option>';
+            
+            if (regionDesignation) {
+                const provinces = psgc.provinces.findByRegion(regionDesignation);
+                provinces.forEach(province => {
+                    const option = document.createElement('option');
+                    option.value = province.name;
+                    option.textContent = province.name;
+                    provinceSelect.appendChild(option);
+                });
+            }
+        }
+
+        function loadMunicipalities(provinceName) {
+            const municipalitySelect = document.getElementById('municipality');
+            municipalitySelect.innerHTML = '<option value="">Select Municipality/City</option>';
+            
+            // Clear dependent fields
+            document.getElementById('barangay').innerHTML = '<option value="">Select Barangay</option>';
+            document.getElementById('zip-code').innerHTML = '<option value="">Select Zip Code</option>';
+            
+            if (provinceName) {
+                const municipalities = psgc.municipalities.findByProvince(provinceName);
+                municipalities.forEach(municipality => {
+                    const option = document.createElement('option');
+                    option.value = municipality.name;
+                    option.textContent = `${municipality.name} ${municipality.city ? '(City)' : ''}`;
+                    municipalitySelect.appendChild(option);
+                });
+            }
+        }
+
+        function loadBarangays(municipalityName) {
+            const barangaySelect = document.getElementById('barangay');
+            barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
+            
+            // Clear zip code
+            document.getElementById('zip-code').innerHTML = '<option value="">Select Zip Code</option>';
+            
+            if (municipalityName) {
+                const barangays = psgc.barangays.findByMunicipality(municipalityName);
+                barangays.forEach(barangay => {
+                    const option = document.createElement('option');
+                    option.value = barangay.name;
+                    option.textContent = barangay.name;
+                    barangaySelect.appendChild(option);
+                });
+                
+                // Load zip codes for this municipality
+                loadZipCodes(municipalityName);
+            }
+        }
+
+        function loadZipCodes(municipalityName) {
+            const zipSelect = document.getElementById('zip-code');
+            zipSelect.innerHTML = '<option value="">Select Zip Code</option>';
+            
+            if (municipalityName) {
+                // Get municipality data to check if it's a city
+                const municipality = psgc.municipalities.find(municipalityName);
+                const isCity = municipality ? municipality.city : false;
+                
+                // Get zip codes for this municipality
+                const zipCodes = smartZipCodes.getZipCodesForMunicipality(municipalityName, isCity);
+                
+                if (zipCodes.length > 0) {
+                    zipCodes.forEach(zipCode => {
+                        const option = document.createElement('option');
+                        option.value = zipCode;
+                        option.textContent = zipCode;
+                        zipSelect.appendChild(option);
+                    });
+                } else {
+                    // If no zip codes found, show a message
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No zip code available';
+                    option.disabled = true;
+                    zipSelect.appendChild(option);
+                }
+            }
+        }
+    </script>
 
 </body>
 </html>

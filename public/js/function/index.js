@@ -89,8 +89,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     registerPasswordToggle.addEventListener('click', function() {
         const passwordInput = document.getElementById('registerPassword');
+        const passwordInput2 = document.getElementById('confirmPassword');
         const icon = this.querySelector('i');
         togglePasswordVisibility(passwordInput, icon);
+        togglePasswordVisibility(passwordInput2, icon);
     });
 
     // Password strength indicator
