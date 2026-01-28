@@ -1,3 +1,45 @@
+function showMissingFieldAlert(missingField) {
+    let errorColor = '#EF4444';
+    
+    return Swal.fire({
+        title: '<div class="swal-title-container"><span class="swal-icon"><i class="fas fa-exclamation-triangle"></i></span><h2 class="swal-custom-title">Required Field Missing</h2></div>',
+        html: `<div class="swal-content"><p class="swal-text">The ${missingField} field is required. Please fill out all required fields before submitting.</p><div class="swal-detail">Field: <strong>${missingField}</strong></div></div>`,
+        icon: 'error',
+        iconColor: errorColor,
+        showConfirmButton: true,
+        confirmButtonText: 'Got it',
+        confirmButtonColor: errorColor,
+        showCancelButton: false,
+        background: '#ffffff',
+        color: '#1F2937',
+        backdrop: 'rgba(0, 0, 0, 0.5)',
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        showClass: {
+            popup: 'animate__animated animate__fadeIn animate__faster'
+        },
+        hideClass: {
+            popup: 'animate__animated animate__fadeOut animate__faster'
+        },
+        customClass: {
+            popup: 'modern-swal-popup',
+            title: 'modern-swal-title',
+            htmlContainer: 'modern-swal-html',
+            confirmButton: 'modern-swal-confirm',
+            cancelButton: 'modern-swal-cancel',
+            icon: 'modern-swal-icon'
+        },
+        buttonsStyling: false,
+        timer: 5000,
+        timerProgressBar: true,
+        position: 'center',
+        width: '480px',
+        padding: '2rem',
+        showCloseButton: true,
+        closeButtonHtml: '<i class="fas fa-times"></i>',
+        closeButtonAriaLabel: 'Close this dialog'
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
@@ -139,14 +181,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const firstName = document.getElementById('firstName').value;
         const lastName = document.getElementById('lastName').value;
+        const middlename = document.getElementById('middlename').value;
+        const bdate = document.getElementById('bdate').value;
+        const sex = document.getElementById('sex').value;
+        const status = document.getElementById('status').value;
+        const houseStreet = document.getElementById('houseStreet').value;
+        const region = document.getElementById('region').value;
+        const province = document.getElementById('province').value;
+        const municipality = document.getElementById('municipality').value;
+        const barangay = document.getElementById('barangay').value;
+        const zipcode = document.getElementById('zip-code').value;
         const email = document.getElementById('registerEmail').value;
         const studentId = document.getElementById('studentId').value;
         const password = document.getElementById('registerPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
+        let primaryColor = '#3B82F6';
+        let secondaryColor = '#8B5CF6';
+        let errorColor = '#EF4444';
+
         // Validation
-        if (!firstName || !lastName) {
-            showAlert(registerAlert, 'Please enter your full name', 'error');
+        if (!firstName || !lastName || !bdate || !sex || !status || !houseStreet || !region || !province || !municipality || !barangay || !zipcode || !email || !studentId || !password || !confirmPassword) {
+            // Determine which field is missing
+            let missingField = "";
+            
+            if (!firstName) missingField = "First Name";
+            else if (!lastName) missingField = "Last Name";
+            else if (!bdate) missingField = "Birthdate";
+            else if (!sex) missingField = "Sex";
+            else if (!status) missingField = "Status";
+            else if (!houseStreet) missingField = "House No. / Street";
+            else if (!region) missingField = "Region";
+            else if (!province) missingField = "Province";
+            else if (!municipality) missingField = "Municipality/City";
+            else if (!barangay) missingField = "Barangay";
+            else if (!zipcode) missingField = "Zip Code";
+            else if (!email) missingField = "Email";
+            else if (!studentId) missingField = "Student ID";
+            else if (!password) missingField = "Password";
+            else if (!confirmPassword) missingField = "Confirm Password";
+            
+            showMissingFieldAlert(missingField);
             return;
         }
 
