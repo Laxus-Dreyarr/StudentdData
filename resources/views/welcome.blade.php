@@ -159,7 +159,7 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="firstName">First Name</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="firstName" placeholder="Your given name..." required>
+                                        <input type="text" class="form-control" id="firstName" placeholder="Your given name...">
                                         <i class="fas fa-user input-icon"></i>
                                     </div>
                                 </div>
