@@ -237,6 +237,9 @@ class StudentController extends Controller
 
                 Cache::put('registration_' . $request->email, [
                     'otp' => $verificationCode,
+                    'firstName' => $request->firstName,
+                    'lastName' => $request->lastName,
+                    'middlename' => $request->middlename,
                     'studentId' => $request->studentId,
                     'password' => $request->password,
                     'email' => $request->email,
@@ -253,14 +256,14 @@ class StudentController extends Controller
                     'is_regular' => '2',
                     'year_level' => "NONE",
                     'curriculum' => $assignedCurriculum,
-                    'attempts' => 0,
+                    'attempts' => 0
                 ], now()->addMinutes(10));
 
                 session(['registration_email' => $request->email]);
 
                 // Send verification email
                 try {
-                    Mail::to($request->email)->send(new RegistrationVerification($verificationCode, $request->givenName, $request->lastName));
+                    Mail::to($request->email)->send(new RegistrationVerification($verificationCode, $request->firstName, $request->lastName));
 
                     // Check if email was actually sent
                     if (count(Mail::failures()) > 0) {
@@ -301,23 +304,15 @@ class StudentController extends Controller
                     ]);
                 }
 
-                // Check password confirmation
-                if ($request->password !== $request->repeatPassword) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Passwords do not match.'
-                    ]);
-                }
-
                 // Generate verification code (6 digits)
                 $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-                // Get device information
-                $deviceInfo = $this->getDeviceInfo();
 
                 Cache::put('registration_' . $request->email, [
                     'otp' => $verificationCode,
                     'studentId' => $request->studentId,
+                    'firstName' => $request->firstName,
+                    'lastName' => $request->lastName,
+                    'middlename' => $request->middlename,
                     'password' => $request->password,
                     'email' => $request->email,
                     'bdate' => $request->bdate,
@@ -333,17 +328,14 @@ class StudentController extends Controller
                     'is_regular' => '1',
                     'year_level' => "1st Year",
                     'curriculum' => $assignedCurriculum,
-                    'attempts' => 0,
-                    'ip_address' => request()->ip(),
-                    'device_info' => $deviceInfo,
-                    'device_summary' => $this->getDeviceSummary()
+                    'attempts' => 0
                 ], now()->addMinutes(10));
 
                 session(['registration_email' => $request->email]);
 
                 // Send verification email
                 try {
-                    Mail::to($request->email)->send(new RegistrationVerification($verificationCode, $request->givenName, $request->lastName));
+                    Mail::to($request->email)->send(new RegistrationVerification($verificationCode, $request->firstName, $request->lastName));
 
                     // Check if email was actually sent
                     if (count(Mail::failures()) > 0) {

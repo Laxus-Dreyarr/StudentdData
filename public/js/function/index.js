@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('action', 'send_registration');
             formData.append('firstName', firstName);
             formData.append('lastName', lastName);
-            formData.append('middlename', middlename);
+            formData.append('middlename', middlename || ''); // Handle optional field better
             formData.append('bdate', bdate);
             formData.append('sex', sex);
             formData.append('status', status);
@@ -514,7 +514,10 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('email', email);
             formData.append('studentId', studentId);
             formData.append('password', password);
-            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            
+            // Get CSRF token properly
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            formData.append('_token', csrfToken);
 
             // Show loading state
             const registerButton = document.getElementById('registerButton');
@@ -526,27 +529,54 @@ document.addEventListener('DOMContentLoaded', function() {
             registerButton.disabled = true;
 
             fetch('/exe/student', {
-            method: 'POST',
-            body: formData,
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest', // Helps Laravel identify AJAX requests
+                    'Accept': 'application/json', // Explicitly expect JSON response
+                }
             })
-            .then(response => response.json())
+            .then(response => {
+                // Check if response is OK
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
+                    // Redirect on success
                     window.location.href = '/register_student_account';
-                    
                 } else {
+                    // Reset button state
+                    btnText.textContent = 'Register';
+                    spinner.style.display = 'none';
+                    registerButton.disabled = false;
+                    
+                    // Show error message (FIXED: changed 'ttext' to 'text')
                     Swal.fire({
                         icon: 'error',
-                        title: 'Failed to send verification code!',
-                        ttext: ''+data.message,
+                        title: 'Registration Failed',
+                        text: data.message || 'Failed to create account. Please try again.',
                         confirmButtonColor: '#EF4444'
                     });
                 }
             })
             .catch(error => {
-                console.error('Error checking email:', error);
+                // Reset button state on error
+                btnText.textContent = 'Register';
+                spinner.style.display = 'none';
+                registerButton.disabled = false;
+                
+                console.error('Registration error:', error);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Unable to connect to server. Please check your internet connection and try again.',
+                    confirmButtonColor: '#EF4444'
+                });
             });
-
         }
 
         // Simulate registration process
