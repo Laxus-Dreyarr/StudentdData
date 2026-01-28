@@ -13,7 +13,7 @@ class RegistrationVerification extends Mailable
 
     public $verificationCode;
     public $cid;
-    public $givenName;
+    public $firstName;
     public $lastName;
 
     // public $name;
@@ -24,11 +24,11 @@ class RegistrationVerification extends Mailable
     //     $this->name = $name;
     // }
 
-    public function __construct($verificationCode, $givenName, $lastName)
+    public function __construct($verificationCode, $firstName, $lastName)
     {
         $this->verificationCode = $verificationCode;
         $this->cid = uniqid();
-        $this->givenName = $givenName;
+        $this->firstName = $firstName;
         $this->lastName = $lastName;
     }
 
