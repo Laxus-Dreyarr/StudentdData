@@ -88,7 +88,7 @@
             <div class="right-panel col-lg-6">
                 <div class="form-header">
                     <h2>Welcome to EVSU Ormoc</h2>
-                    <p>Sign in to your account or create a new one to get started</p>
+                    <p>Sign in to your account EnrollSys or create a new one to get started</p>
                 </div>
                 
                 <!-- Tab Navigation -->
@@ -117,16 +117,16 @@
                             <div class="form-group">
                                 <label class="form-label" for="loginEmail">Email Address</label>
                                 <div class="input-group">
-                                    <i class="fas fa-envelope input-icon"></i>
                                     <input type="email" class="form-control" id="loginEmail" placeholder="student@evsu.edu.ph" required>
+                                    <i class="fas fa-envelope input-icon"></i>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label" for="loginPassword">Password</label>
                                 <div class="input-group">
-                                    <i class="fas fa-lock input-icon"></i>
                                     <input type="password" class="form-control" id="loginPassword" placeholder="Enter your password" required>
+                                    <i class="fas fa-lock input-icon"></i>
                                     <button type="button" class="password-toggle" id="loginPasswordToggle">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -159,54 +159,56 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="firstName">First Name</label>
                                     <div class="input-group">
-                                        <i class="fas fa-user input-icon"></i>
                                         <input type="text" class="form-control" id="firstName" placeholder="Your given name..." required>
+                                        <i class="fas fa-user input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Last Name</label>
                                     <div class="input-group">
-                                        <i class="fas fa-user input-icon"></i>
                                         <input type="text" class="form-control" id="lastName" placeholder="Your family name" required>
+                                        <i class="fas fa-user input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Middle Name (Optional)</label>
                                     <div class="input-group">
+                                        <input type="text" class="form-control" id="middlename" placeholder="Your middle name" required>
                                         <i class="fas fa-user input-icon"></i>
-                                        <input type="text" class="form-control" id="lastName" placeholder="Your middle name" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Birthdate</label>
                                     <div class="input-group">
-                                        <i class="fas fa-user input-icon"></i>
-                                        <input type="date" class="form-control" id="lastName" placeholder="Doe" required>
+                                        <input type="date" class="form-control" id="bdate" placeholder="Doe" required>
+                                        <i class="fas fa-calendar-alt input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Sex</label>
                                     <div class="input-group">
-                                        <select class="form-control">
+                                        <select class="form-control" id="sex">
                                           <option value="Male">Male</option>
                                           <option value="Female">Female</option>
                                         </select>
+                                        <i class="fas fa-venus-mars input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Status</label>
                                     <div class="input-group">
-                                        <select class="form-control">
+                                        <select class="form-control" id="status">
                                           <option value="Single">Single</option>
                                           <option value="Married">Married</option>
                                         </select>
+                                        <i class="fas fa-heart input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">House No. / Street</label>
                                     <div class="input-group">
-                                        <i class="fas fa-user input-icon"></i>
                                         <input type="text" class="form-control" id="houseStreet" placeholder="e.g., 123 Main St" required>
+                                        <i class="fas fa-home input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -218,6 +220,7 @@
                                                 <option value="{{ $region['designation'] }}">{{ $region['name'] }}</option>
                                             @endforeach
                                         </select>
+                                        <i class="fas fa-map input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -226,6 +229,7 @@
                                         <select class="form-control" id="province" onchange="loadMunicipalities(this.value)" required>
                                           <option value="">Select Province</option>
                                         </select>
+                                        <i class="fas fa-landmark input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -234,6 +238,7 @@
                                         <select class="form-control" id="municipality" onchange="loadBarangays(this.value)" required>
                                           <option value="">Select Municipality/City</option>
                                         </select>
+                                        <i class="fas fa-city input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -242,6 +247,7 @@
                                         <select class="form-control" id="barangay" required>
                                           <option value="">Select Barangay</option>
                                         </select>
+                                        <i class="fas fa-location-dot input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -250,31 +256,32 @@
                                         <select class="form-control" id="zip-code" required>
                                           <option value="">Select Barangay</option>
                                         </select>
+                                        <i class="fas fa-mail-bulk input-icon"></i>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label" for="registerEmail">Email Address</label>
-                                <div class="input-group">
-                                    <i class="fas fa-envelope input-icon"></i>
+                                <div class="input-group">                                  
                                     <input type="email" class="form-control" id="registerEmail" placeholder="student@university.edu" required>
+                                    <i class="fas fa-envelope input-icon"></i>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label" for="studentId">Student ID</label>
-                                <div class="input-group">
-                                    <i class="fas fa-id-card input-icon"></i>
+                                <div class="input-group">                                   
                                     <input type="text" class="form-control" id="studentId" placeholder="STU-2023-001" required>
+                                    <i class="fas fa-id-card input-icon"></i>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label" for="registerPassword">Password</label>
                                 <div class="input-group">
-                                    <i class="fas fa-lock input-icon"></i>
                                     <input type="password" class="form-control" id="registerPassword" placeholder="Create a strong password" required>
+                                    <i class="fas fa-lock input-icon"></i>
                                     <button type="button" class="password-toggle" id="registerPasswordToggle">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -287,9 +294,9 @@
                             
                             <div class="form-group">
                                 <label class="form-label" for="confirmPassword">Confirm Password</label>
-                                <div class="input-group">
-                                    <i class="fas fa-lock input-icon"></i>
+                                <div class="input-group">                                    
                                     <input type="password" class="form-control" id="confirmPassword" placeholder="Re-enter your password" required>
+                                    <i class="fas fa-lock input-icon"></i>
                                 </div>
                             </div>
                             
