@@ -23,3 +23,16 @@ Route::get('/', function () {
 Route::prefix('/exe')->group(function (){
     Route::post('/student', [StudentController::class, 'register']);
 });
+
+Route::get('/register_student_account', function () {
+    $email = session('registration_email');
+    $registerData = $email ? Cache::get('registration_' . $email) : null;
+    if (!$registerData) {
+        return redirect('/');
+    }
+
+    return view('student-verify', [
+        'email' => $email,
+        'registerData' => $registerData
+    ]);
+});
