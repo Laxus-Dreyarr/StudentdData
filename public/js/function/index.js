@@ -1,3 +1,58 @@
+// Helper functions for validation
+function isNumeric(str) {
+    return /^\d+$/.test(str);
+}
+
+function containsOnlyLetters(str) {
+    return /^[A-Za-z\s]+$/.test(str);
+}
+
+function validateEVSUEmail(email) {
+    const re = /^[^\s@]+@evsu\.edu\.ph$/;
+    return re.test(email);
+}
+
+function validateStudentId(studentId) {
+    const re = /^\d{4}-\d{5}$/;
+    return re.test(studentId);
+}
+
+function validateBirthdate(bdate) {
+    const today = new Date();
+    const birthDate = new Date(bdate);
+    
+    // Check if date is valid
+    if (isNaN(birthDate.getTime())) {
+        return { valid: false, reason: 'invalid' };
+    }
+    
+    // Check if date is in the future
+    if (birthDate > today) {
+        return { valid: false, reason: 'future' };
+    }
+    
+    // Calculate age
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust age if birth month hasn't occurred yet this year
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    
+    // Check if under 18
+    if (age < 18) {
+        return { valid: false, reason: 'underage', age: age };
+    }
+    
+    // Optional: Check if age is reasonable (e.g., not over 100)
+    if (age > 100) {
+        return { valid: false, reason: 'tooOld', age: age };
+    }
+    
+    return { valid: true, age: age };
+}
+
 function showMissingFieldAlert(missingField) {
     let errorColor = '#EF4444';
     
@@ -225,33 +280,324 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        if (!validateEmail(email)) {
-            showAlert(registerAlert, 'Please enter a valid email address', 'error');
+        // Birthdate validation
+        const birthdateValidation = validateBirthdate(bdate);
+        if (!birthdateValidation.valid) {
+            let errorTitle = '';
+            let errorMessage = '';
+            
+            switch(birthdateValidation.reason) {
+                case 'invalid':
+                    errorTitle = 'Invalid Birthdate';
+                    errorMessage = 'Please enter a valid date.';
+                    break;
+                case 'future':
+                    errorTitle = 'Future Birthdate';
+                    errorMessage = 'Invalid Birthdate!';
+                    break;
+                case 'underage':
+                    errorTitle = 'Age Restriction';
+                    errorMessage = `You must be at least 18 years old to register. You are ${birthdateValidation.age} years old.`;
+                    break;
+                case 'tooOld':
+                    errorTitle = 'Unusual Birthdate';
+                    errorMessage = `The birthdate entered suggests an age of ${birthdateValidation.age} years. Please verify your birthdate.`;
+                    break;
+                default:
+                    errorTitle = 'Invalid Birthdate';
+                    errorMessage = 'Please check your birthdate.';
+            }
+            
+            Swal.fire({
+                icon: 'error',
+                title: errorTitle,
+                text: errorMessage,
+                confirmButtonColor: '#EF4444'
+            });
             return;
         }
 
-        if (!studentId) {
-            showAlert(registerAlert, 'Please enter your student ID', 'error');
+        // Name validations (should not be numeric)
+        if (isNumeric(firstName)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid First Name',
+                text: 'First Name should not contain only numbers',
+                confirmButtonColor: '#EF4444'
+            });
             return;
         }
 
-        if (password.length < 8) {
-            showAlert(registerAlert, 'Password must be at least 8 characters', 'error');
+        if (isNumeric(lastName)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Last Name',
+                text: 'Last Name should not contain only numbers',
+                confirmButtonColor: '#EF4444'
+            });
             return;
         }
 
-        if (password !== confirmPassword) {
-            showAlert(registerAlert, 'Passwords do not match', 'error');
+        // Optional: Check if names contain only letters (optional validation)
+        if (!containsOnlyLetters(firstName)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid First Name',
+                text: 'First Name should contain only letters and spaces',
+                confirmButtonColor: '#F59E0B'
+            });
             return;
         }
 
-        if (!document.getElementById('termsAgreement').checked) {
-            showAlert(registerAlert, 'You must agree to the terms and conditions', 'error');
+        if (!containsOnlyLetters(lastName)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Last Name',
+                text: 'Last Name should contain only letters and spaces',
+                confirmButtonColor: '#F59E0B'
+            });
             return;
+        }
+
+        // Validate middle name if provided
+        if (middlename && isNumeric(middlename)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Middle Name',
+                text: 'Middle Name should not contain only numbers',
+                confirmButtonColor: '#EF4444'
+            });
+            return;
+        }
+
+        if (middlename && !containsOnlyLetters(middlename)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Middle Name',
+                text: 'Middle Name should contain only letters and spaces',
+                confirmButtonColor: '#F59E0B'
+            });
+            return;
+        }
+
+        // Email validation for EVSU email
+        if (!validateEVSUEmail(email)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Email Address',
+                html: 'Please enter a valid EVSU email address<br>',
+                confirmButtonColor: '#EF4444'
+            });
+            return;
+        }
+
+        // Student ID validation (format: YYYY-XXXXX)
+        if (!validateStudentId(studentId)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Student ID',
+                html: 'Please enter a valid Student ID<br>',
+                confirmButtonColor: '#EF4444'
+            });
+            return;
+        }
+
+        // Optional: Validate year in student ID (not older than 2000)
+        const yearPart = studentId.split('-')[0];
+        const currentYear = new Date().getFullYear();
+        if (parseInt(yearPart) < 2000 || parseInt(yearPart) > currentYear) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Unusual Student ID Year',
+                text: `The year in your Student ID (${yearPart}) seems unusual. Please verify.`,
+                confirmButtonColor: '#F59E0B',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                // confirmButtonText: 'Continue Anyway'
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                // Continue with remaining validations if user confirms
+            });
+            return;
+        }
+
+        // Continue with remaining validations
+        continueValidations();
+
+        function continueValidations() {
+            // Password validations
+            if (password.length < 8) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Password Too Short',
+                    text: 'Password must be at least 8 characters',
+                    confirmButtonColor: '#EF4444'
+                });
+                return;
+            }
+
+            // Password strength validation (optional but recommended)
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumbers = /\d/.test(password);
+            const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+            if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChars) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Weak Password',
+                    html: 'For better security, please include:<br>' +
+                        '• Uppercase letters<br>' +
+                        '• Lowercase letters<br>' +
+                        '• Numbers<br>' +
+                        '• Special characters',
+                    confirmButtonColor: '#F59E0B',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancel',
+                    confirmButtonText: 'Use Anyway'
+                }).then((result) => {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                    checkPasswordMatch();
+                });
+                return;
+            }
+
+            checkPasswordMatch();
+        }
+
+        function checkPasswordMatch() {
+            if (password !== confirmPassword) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Passwords Do Not Match',
+                    text: 'Please make sure both passwords are identical',
+                    confirmButtonColor: '#EF4444'
+                });
+                return;
+            }
+
+            // Terms agreement validation
+            if (!document.getElementById('termsAgreement').checked) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Terms Agreement Required',
+                    text: 'You must agree to the terms and conditions',
+                    confirmButtonColor: '#EF4444'
+                });
+                return;
+            }
+
+            // All validations passed - submit the form
+            submitFormData();
+        }
+
+        function submitFormData() {
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('action', 'send_registration');
+            formData.append('firstName', firstName);
+            formData.append('lastName', lastName);
+            formData.append('middlename', middlename);
+            formData.append('bdate', bdate);
+            formData.append('sex', sex);
+            formData.append('status', status);
+            formData.append('houseStreet', houseStreet);
+            formData.append('region', region);
+            formData.append('province', province);
+            formData.append('municipality', municipality);
+            formData.append('barangay', barangay);
+            formData.append('zipcode', zipcode);
+            formData.append('email', email);
+            formData.append('studentId', studentId);
+            formData.append('password', password);
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+            // Show loading state
+            const registerButton = document.getElementById('registerButton');
+            const btnText = registerButton.querySelector('.btn-text');
+            const spinner = registerButton.querySelector('.spinner');
+            
+            btnText.textContent = 'Creating Account...';
+            spinner.style.display = 'block';
+            registerButton.disabled = true;
+
+            fetch('/exe/student', {
+            method: 'POST',
+            body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '/register_student_account';
+                    
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed to send verification code!',
+                        ttext: ''+data.message,
+                        confirmButtonColor: '#EF4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error checking email:', error);
+            });
+
         }
 
         // Simulate registration process
-        simulateRegistration(firstName, lastName, email, studentId, password);
+        // simulateRegistration(firstName, lastName, email, studentId, password);
+    });
+
+    
+
+    // Optional: Add real-time validation for student ID
+    document.getElementById('studentId').addEventListener('input', function(e) {
+        const value = e.target.value;
+        const isValid = validateStudentId(value);
+        
+        if (value && !isValid) {
+            e.target.style.borderColor = '#EF4444';
+            e.target.setAttribute('title', 'Format: YYYY-XXXXX (e.g., 2020-30617)');
+        } else {
+            e.target.style.borderColor = '';
+            e.target.removeAttribute('title');
+        }
+    });
+
+    // Optional: Add real-time validation for email
+    document.getElementById('registerEmail').addEventListener('blur', function(e) {
+        const value = e.target.value;
+        const isValid = validateEVSUEmail(value);
+        
+        if (value && !isValid) {
+            e.target.style.borderColor = '#EF4444';
+            e.target.setAttribute('title', 'Must be @evsu.edu.ph email');
+        } else {
+            e.target.style.borderColor = '';
+            e.target.removeAttribute('title');
+        }
+    });
+
+    // Optional: Add real-time validation for names
+    ['firstName', 'lastName', 'middlename'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('blur', function(e) {
+                const value = e.target.value.trim();
+                if (value && isNumeric(value)) {
+                    e.target.style.borderColor = '#EF4444';
+                    e.target.setAttribute('title', 'Should not contain only numbers');
+                } else {
+                    e.target.style.borderColor = '';
+                    e.target.removeAttribute('title');
+                }
+            });
+        }
     });
 
     // Logout
@@ -300,11 +646,6 @@ document.addEventListener('DOMContentLoaded', function() {
         strength += (typeCount - 1) * 5;
 
         return Math.min(strength, 100);
-    }
-
-    function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
     }
 
     function showAlert(alertElement, message, type) {

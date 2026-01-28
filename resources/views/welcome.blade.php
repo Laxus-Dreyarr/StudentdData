@@ -173,7 +173,7 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="lastName">Middle Name (Optional)</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="middlename" placeholder="Your middle name" required>
+                                        <input type="text" class="form-control" id="middlename" placeholder="Your middle name">
                                         <i class="fas fa-user input-icon"></i>
                                     </div>
                                 </div>
