@@ -15,20 +15,30 @@ $password = $registerData['password'];
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Verification Code - Student Data</title>
+    <title>Student Registration Verification - {{ config('app.name', 'Laravel') }}</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,600&display=swap" rel="stylesheet" />
     <!-- Styles -->
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: 'Figtree', sans-serif;
+        }
+        
         .verification-container {
-            max-width: 450px;
-            margin: 80px auto;
+            max-width: 500px;
+            width: 100%;
             padding: 40px;
             background: rgba(255, 255, 255, 0.98);
             border-radius: 25px;
-            box-shadow: 0 20px 40px rgba(50, 50, 93, 0.1), 0 10px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
@@ -42,58 +52,77 @@ $password = $registerData['password'];
             left: 0;
             right: 0;
             height: 5px;
-            background: linear-gradient(90deg, #3490dc, #6574cd, #3490dc);
+            background: linear-gradient(90deg, #667eea, #764ba2);
             background-size: 200% 100%;
-            animation: shimmer 3s infinite linear;
         }
         
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        .verification-header {
+            text-align: center;
+            margin-bottom: 30px;
         }
         
         .verification-title {
             color: #2d3748;
-            text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             font-size: 32px;
             font-weight: 700;
-            background: linear-gradient(135deg, #3490dc 0%, #6574cd 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         
         .verification-subtitle {
-            text-align: center;
             color: #718096;
-            margin-bottom: 35px;
             font-size: 16px;
             line-height: 1.6;
         }
         
-        .verification-form {
+        .student-info {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .student-info-item {
             display: flex;
-            flex-direction: column;
-            gap: 25px;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .student-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #4a5568;
+            font-weight: 600;
+        }
+        
+        .info-value {
+            color: #2d3748;
+            font-weight: 500;
         }
         
         .code-inputs-container {
             position: relative;
+            margin: 30px 0;
         }
         
         .code-inputs {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin: 25px 0;
+            gap: 12px;
         }
         
         .code-input {
-            width: 55px;
-            height: 65px;
+            width: 50px;
+            height: 60px;
             text-align: center;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             border: 3px solid #e2e8f0;
             border-radius: 12px;
@@ -103,8 +132,8 @@ $password = $registerData['password'];
         }
         
         .code-input:focus {
-            border-color: #3490dc;
-            box-shadow: 0 0 0 4px rgba(52, 144, 220, 0.2);
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
             outline: none;
             transform: translateY(-2px);
         }
@@ -154,7 +183,7 @@ $password = $registerData['password'];
         #timer {
             font-size: 32px;
             font-weight: bold;
-            color: #3490dc;
+            color: #667eea;
             font-family: 'Courier New', monospace;
             letter-spacing: 2px;
         }
@@ -172,7 +201,7 @@ $password = $registerData['password'];
             bottom: 0;
             left: 0;
             height: 4px;
-            background: linear-gradient(90deg, #3490dc, #6574cd);
+            background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 0 0 10px 10px;
             width: 100%;
             transform-origin: left;
@@ -185,6 +214,7 @@ $password = $registerData['password'];
             background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
             border-radius: 10px;
             border: 2px solid #fc8181;
+            display: none;
         }
         
         .attempts-warning {
@@ -220,38 +250,8 @@ $password = $registerData['password'];
             font-size: 18px;
         }
         
-        .resend-section {
-            text-align: center;
-            margin-top: 25px;
-        }
-        
-        #resendLink {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: #3490dc;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 12px 24px;
-            background: #ebf8ff;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        #resendLink:hover:not(:disabled) {
-            background: #bee3f8;
-            transform: translateY(-1px);
-        }
-        
-        #resendLink:disabled {
-            color: #a0aec0;
-            background: #edf2f7;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
         .btn-verify {
-            background: linear-gradient(135deg, #3490dc 0%, #6574cd 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             padding: 18px 30px;
@@ -261,6 +261,7 @@ $password = $registerData['password'];
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 15px;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -269,7 +270,7 @@ $password = $registerData['password'];
         
         .btn-verify:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(52, 144, 220, 0.3);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
         
         .btn-verify:disabled {
@@ -336,6 +337,36 @@ $password = $registerData['password'];
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+        
+        .resend-section {
+            text-align: center;
+            margin-top: 25px;
+        }
+        
+        #resendLink {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 24px;
+            background: #ebf8ff;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        #resendLink:hover:not(:disabled) {
+            background: #bee3f8;
+            transform: translateY(-1px);
+        }
+        
+        #resendLink:disabled {
+            color: #a0aec0;
+            background: #edf2f7;
+            cursor: not-allowed;
+            transform: none;
         }
         
         .back-link {
@@ -438,40 +469,70 @@ $password = $registerData['password'];
             border-radius: 10px;
             border: 2px solid #fed7d7;
         }
+        
+        .email-display {
+            background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #2c5282;
+            border: 2px solid #90cdf4;
+        }
 
         @media (max-width: 480px) {
             .verification-container {
-                width: 100%;
                 padding: 30px 20px;
             }
             
             .code-input {
                 width: 40px;
                 height: 50px;
-                font-size: 24px;
+                font-size: 20px;
             }
-
-            #timer {
-                font-size: 28px;
-
-            }
-
+            
             .btn-verify {
-                padding: 15px 25px;
+                padding: 15px 20px;
                 font-size: 16px;
-
-
             }
-
-
+            
         }
-
     </style>
 </head>
 <body>
     <div class="verification-container">
-        <h1 class="verification-title">Verification Required</h1>
-        <p class="verification-subtitle">Enter the 6-digit code sent to your email/phone.<br>Auto-verifies when complete.</p>
+        <div class="verification-header">
+            <h1 class="verification-title">Student Registration Verification</h1>
+            <p class="verification-subtitle">Please enter the 6-digit verification code sent to your email</p>
+        </div>
+        
+        <!-- Student Information Display -->
+        @if(isset($registerData))
+        <div class="student-info">
+            <h3 style="color: #2d3748; margin-bottom: 15px; font-size: 18px;">Registration Details:</h3>
+            <div class="student-info-item">
+                <span class="info-label">Student ID:</span>
+                <span class="info-value">{{ $registerData['studentId'] }}</span>
+            </div>
+            <div class="student-info-item">
+                <span class="info-label">Name:</span>
+                <span class="info-value">{{ $registerData['firstName'] }} {{ $registerData['middlename'] ?? '' }} {{ $registerData['lastName'] }}</span>
+            </div>
+            <div class="student-info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ $registerData['email'] }}</span>
+            </div>
+            <div class="student-info-item">
+                <span class="info-label">Curriculum:</span>
+                <span class="info-value">{{ $registerData['curriculum'] }}</span>
+            </div>
+        </div>
+        @endif
+        
+        <div class="email-display">
+            Code sent to: {{ $email }}
+        </div>
         
         <div class="message-container">
             <div class="error-message" id="errorMessage"></div>
@@ -486,10 +547,12 @@ $password = $registerData['password'];
             </p>
         </div>
         
-        <!-- Verification Form (shown when not locked out) -->
+        <!-- Verification Form -->
         <div id="verificationFormContainer">
-            <form id="verificationForm" class="verification-form">
+            <form id="verificationForm" class="verification-form" action="{{ route('verify-student-otp') }}" method="POST">
                 @csrf
+                <input type="hidden" name="email" value="{{ $email }}">
+                
                 <div class="code-inputs-container">
                     <div class="code-inputs">
                         <input type="text" class="code-input" maxlength="1" data-index="1" autofocus>
@@ -498,44 +561,49 @@ $password = $registerData['password'];
                         <input type="text" class="code-input" maxlength="1" data-index="4">
                         <input type="text" class="code-input" maxlength="1" data-index="5">
                         <input type="text" class="code-input" maxlength="1" data-index="6">
-                        <input type="hidden" name="verification_code" id="verificationCode">
+                        <input type="hidden" name="otp" id="otpCode">
                     </div>
                     <div class="auto-verify-indicator">Auto-verifies when complete</div>
                 </div>
                 
                 <div class="timer-container">
                     <span class="timer-label">Code expires in</span>
-                    <div id="timer">01:00</div>
+                    <div id="timer">10:00</div>
                     <div class="timer-progress" id="timerProgress"></div>
                 </div>
                 
                 <button type="submit" class="btn-verify" id="verifyBtn">
-                    <span>Verify Code</span>
+                    <span>Verify & Complete Registration</span>
                     <div class="loading-spinner" id="loadingSpinner"></div>
                 </button>
             </form>
-    
+            
+            <!-- <div class="resend-section">
+                <a href="#" id="resendLink" disabled>
+                    <span>Resend Verification Code</span>
+                </a>
+            </div> -->
         </div>
         
-        <!-- Lockout Screen (shown when attempts exceeded) -->
+        <!-- Lockout Screen -->
         <div class="lockout-container" id="lockoutContainer">
             <div class="lockout-icon">🔒</div>
             <h2>Too Many Attempts</h2>
             <p>You have exceeded the maximum number of verification attempts.</p>
             <div class="lockout-timer" id="lockoutTimer">15:00</div>
             <p>Please wait before trying again or contact support.</p>
-            <div class="resend-section">
+            <!-- <div class="resend-section">
                 <a href="#" id="lockoutResendLink">
                     <span>Request New Code</span>
                 </a>
-            </div>
+            </div> -->
         </div>
         
         <!-- Success Screen -->
         <div class="verification-success" id="verificationSuccess">
             <div class="success-icon">✓</div>
             <h2>Verification Successful!</h2>
-            <p>You are being redirected...</p>
+            <p>Your student account is being created...</p>
             <div class="redirecting-text" id="redirectCountdown">Redirecting in 3 seconds</div>
         </div>
         
@@ -545,11 +613,20 @@ $password = $registerData['password'];
     </div>
 
     <script>
+        // Initialize attempt counter from cache data
+        const initialAttempts = <?php echo json_encode($registerData['attempts'] ?? 0); ?>;
+        const maxAttempts = 3;
+        const lockoutDuration = 900; // 15 minutes in seconds
+        const otpDuration = 600; // 10 minutes in seconds (matching your cache)
+
+         // Clear previous localStorage entries for this email when page loads
+        localStorage.removeItem('student_verification_attempts_' + <?php echo json_encode($email); ?>);
+        localStorage.removeItem('student_verification_timer_' + <?php echo json_encode($email); ?>);
+
+
         class AttemptManager {
-            constructor(maxAttempts = 3, lockoutTime = 900, storageKey = 'verification_attempts') {
-                this.maxAttempts = maxAttempts;
-                this.lockoutTime = lockoutTime; // 15 minutes in seconds
-                this.storageKey = storageKey;
+            constructor() {
+                this.storageKey = 'student_verification_attempts_' + <?php echo json_encode($email); ?>;
                 this.attemptsContainer = document.getElementById('attemptsContainer');
                 this.attemptsCountElement = document.getElementById('attemptsCount');
                 this.attemptsIcon = document.getElementById('attemptsIcon');
@@ -559,22 +636,27 @@ $password = $registerData['password'];
             loadAttempts() {
                 const data = localStorage.getItem(this.storageKey);
                 if (data) {
-                    const { attempts, timestamp } = JSON.parse(data);
+                    const { attempts, timestamp, lockedUntil } = JSON.parse(data);
                     const now = Math.floor(Date.now() / 1000);
-                    const timeElapsed = now - timestamp;
                     
-                    if (timeElapsed > this.lockoutTime) {
-                        // Reset attempts after lockout period
-                        this.resetAttempts();
-                        this.isLockedOut = false;
+                    // Check if lockout period has passed
+                    if (lockedUntil && now < lockedUntil) {
+                        this.attempts = maxAttempts;
+                        this.lockedUntil = lockedUntil;
+                        this.isLockedOut = true;
+                        return;
+                    }
+                    
+                    // Check if attempts should reset (more than 15 minutes since last attempt)
+                    if (timestamp && now - timestamp > 900) {
+                        this.attempts = initialAttempts;
                     } else {
                         this.attempts = attempts;
-                        this.isLockedOut = this.attempts >= this.maxAttempts;
                     }
                 } else {
-                    this.attempts = 0;
-                    this.isLockedOut = false;
+                    this.attempts = initialAttempts;
                 }
+                this.isLockedOut = this.attempts >= maxAttempts;
                 this.updateDisplay();
             }
 
@@ -583,17 +665,25 @@ $password = $registerData['password'];
                 this.saveAttempts();
                 this.updateDisplay();
                 
-                if (this.attempts >= this.maxAttempts) {
+                if (this.attempts >= maxAttempts) {
                     this.isLockedOut = true;
-                    this.startLockoutTimer();
+                    this.startLockout();
                 }
                 
                 return this.attempts;
             }
+            
+
+            startLockout() {
+                const lockedUntil = Math.floor(Date.now() / 1000) + lockoutDuration;
+                this.lockedUntil = lockedUntil;
+                this.saveAttempts();
+            }
 
             resetAttempts() {
-                this.attempts = 0;
+                this.attempts = initialAttempts;
                 this.isLockedOut = false;
+                this.lockedUntil = null;
                 localStorage.removeItem(this.storageKey);
                 this.updateDisplay();
             }
@@ -601,13 +691,14 @@ $password = $registerData['password'];
             saveAttempts() {
                 const data = {
                     attempts: this.attempts,
-                    timestamp: Math.floor(Date.now() / 1000)
+                    timestamp: Math.floor(Date.now() / 1000),
+                    lockedUntil: this.lockedUntil || null
                 };
                 localStorage.setItem(this.storageKey, JSON.stringify(data));
             }
 
             updateDisplay() {
-                const remainingAttempts = this.maxAttempts - this.attempts;
+                const remainingAttempts = maxAttempts - this.attempts;
                 
                 if (this.attempts > 0 && !this.isLockedOut) {
                     this.attemptsContainer.style.display = 'block';
@@ -629,39 +720,30 @@ $password = $registerData['password'];
                 }
             }
 
-            startLockoutTimer() {
-                const lockoutEnd = Math.floor(Date.now() / 1000) + this.lockoutTime;
-                localStorage.setItem('lockout_end', lockoutEnd);
-            }
-
-            checkLockout() {
-                const lockoutEnd = localStorage.getItem('lockout_end');
-                if (!lockoutEnd) return false;
-
-                const now = Math.floor(Date.now() / 1000);
-                if (now < lockoutEnd) {
-                    this.isLockedOut = true;
+            isLocked() {
+                if (!this.isLockedOut) return false;
+                
+                if (this.lockedUntil) {
+                    const now = Math.floor(Date.now() / 1000);
+                    if (now >= this.lockedUntil) {
+                        this.resetAttempts();
+                        return false;
+                    }
                     return true;
-                } else {
-                    localStorage.removeItem('lockout_end');
-                    this.resetAttempts();
-                    return false;
                 }
+                return this.isLockedOut;
             }
 
             getRemainingLockoutTime() {
-                const lockoutEnd = localStorage.getItem('lockout_end');
-                if (!lockoutEnd) return 0;
-
+                if (!this.lockedUntil) return 0;
                 const now = Math.floor(Date.now() / 1000);
-                return Math.max(0, lockoutEnd - now);
+                return Math.max(0, this.lockedUntil - now);
             }
         }
 
         class PersistentTimer {
-            constructor(duration = 60, storageKey = 'verification_timer') {
-                this.duration = duration;
-                this.storageKey = storageKey;
+            constructor() {
+                this.storageKey = 'student_verification_timer_{{ $email }}';
                 this.timerElement = document.getElementById('timer');
                 this.timerProgress = document.getElementById('timerProgress');
                 this.verifyBtn = document.getElementById('verifyBtn');
@@ -673,12 +755,13 @@ $password = $registerData['password'];
             }
 
             initialize() {
+                localStorage.removeItem(this.storageKey);
                 const savedTime = localStorage.getItem(this.storageKey);
                 const now = Math.floor(Date.now() / 1000);
                 
                 if (savedTime) {
                     const elapsed = now - parseInt(savedTime);
-                    this.remainingTime = Math.max(0, this.duration - elapsed);
+                    this.remainingTime = Math.max(0, otpDuration - elapsed);
                     
                     if (this.remainingTime > 0) {
                         this.startTimer();
@@ -687,7 +770,7 @@ $password = $registerData['password'];
                         this.onTimerComplete();
                     }
                 } else {
-                    this.remainingTime = this.duration;
+                    this.remainingTime = otpDuration;
                     localStorage.setItem(this.storageKey, now.toString());
                     this.startTimer();
                 }
@@ -704,9 +787,9 @@ $password = $registerData['password'];
                         this.onTimerComplete();
                     }
                     
-                    // Auto-save progress every 3 seconds
-                    if (this.remainingTime % 3 === 0) {
-                        const startTime = Math.floor(Date.now() / 1000) - (this.duration - this.remainingTime);
+                    // Auto-save progress every 5 seconds
+                    if (this.remainingTime % 5 === 0) {
+                        const startTime = Math.floor(Date.now() / 1000) - (otpDuration - this.remainingTime);
                         localStorage.setItem(this.storageKey, startTime.toString());
                     }
                 }, 1000);
@@ -719,14 +802,14 @@ $password = $registerData['password'];
                 this.timerElement.textContent = timeString;
                 
                 // Update progress bar
-                const progressPercentage = (this.remainingTime / this.duration) * 100;
+                const progressPercentage = (this.remainingTime / otpDuration) * 100;
                 this.timerProgress.style.transform = `scaleX(${progressPercentage / 100})`;
                 
                 // Visual warnings
-                if (this.remainingTime < 30 && this.remainingTime > 10) {
+                if (this.remainingTime < 60 && this.remainingTime > 30) {
                     this.timerElement.classList.add('timer-warning');
                     this.timerElement.classList.remove('timer-expired');
-                } else if (this.remainingTime <= 10) {
+                } else if (this.remainingTime <= 30) {
                     this.timerElement.classList.remove('timer-warning');
                     this.timerElement.classList.add('timer-expired');
                 } else {
@@ -744,12 +827,33 @@ $password = $registerData['password'];
                 this.updateInputsState(true);
                 localStorage.removeItem(this.storageKey);
                 showError('Verification code has expired. Please request a new one.');
+                
+                // Clear server cache and session when timer expires
+                this.clearCacheOnServer();
+            }
+
+            async clearCacheOnServer() {
+                try {
+                    // Call server to clear cache when timer expires
+                    await fetch('/api/clear-lockout-cache', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                        },
+                        body: JSON.stringify({
+                            email: '<?php echo $email; ?>'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to clear cache:', error);
+                }
             }
 
             resetTimer() {
                 clearInterval(this.interval);
                 localStorage.removeItem(this.storageKey);
-                this.remainingTime = this.duration;
+                this.remainingTime = otpDuration;
                 const now = Math.floor(Date.now() / 1000);
                 localStorage.setItem(this.storageKey, now.toString());
                 this.verifyBtn.disabled = false;
@@ -757,7 +861,6 @@ $password = $registerData['password'];
                 this.updateInputsState(false);
                 this.timerElement.classList.remove('timer-expired', 'timer-warning');
                 this.startTimer();
-                showSuccess('New verification code sent!');
             }
 
             updateInputsState(disabled) {
@@ -779,30 +882,38 @@ $password = $registerData['password'];
         }
 
         class LockoutManager {
-            constructor(lockoutDuration = 900) { // 15 minutes
-                this.lockoutDuration = lockoutDuration;
+            constructor() {
                 this.lockoutContainer = document.getElementById('lockoutContainer');
                 this.lockoutTimer = document.getElementById('lockoutTimer');
                 this.verificationFormContainer = document.getElementById('verificationFormContainer');
                 this.lockoutInterval = null;
             }
 
-            checkAndShowLockout() {
-                const remainingTime = attemptManager.getRemainingLockoutTime();
-                
-                if (remainingTime > 0) {
-                    this.showLockout(remainingTime);
-                    return true;
-                }
-                
-                this.hideLockout();
-                return false;
-            }
-
             showLockout(remainingSeconds) {
                 this.verificationFormContainer.style.display = 'none';
                 this.lockoutContainer.style.display = 'block';
                 this.startLockoutTimer(remainingSeconds);
+                
+                // Make an API call to clear cache on server
+                this.clearCacheOnServer();
+            }
+
+            async clearCacheOnServer() {
+                try {
+                    // Call server to clear cache when locked out
+                    await fetch('/api/clear-lockout-cache', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                        },
+                        body: JSON.stringify({
+                            email: '<?php echo $email; ?>'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to clear cache:', error);
+                }
             }
 
             hideLockout() {
@@ -824,7 +935,7 @@ $password = $registerData['password'];
                         clearInterval(this.lockoutInterval);
                         this.hideLockout();
                         attemptManager.resetAttempts();
-                        showSuccess('You can now try again. A new code has been sent.');
+                        showSuccess('You can now try again.');
                     }
                 }, 1000);
             }
@@ -844,17 +955,19 @@ $password = $registerData['password'];
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            verificationTimer = new PersistentTimer(60);
-            attemptManager = new AttemptManager(3, 900); // 3 attempts, 15min lockout
+            verificationTimer = new PersistentTimer();
+            attemptManager = new AttemptManager();
             lockoutManager = new LockoutManager();
             
             // Check for active lockout
-            if (lockoutManager.checkAndShowLockout()) {
-                return; // Stop initialization if locked out
+            if (attemptManager.isLocked()) {
+                const remainingTime = attemptManager.getRemainingLockoutTime();
+                lockoutManager.showLockout(remainingTime);
+                return;
             }
             
             const codeInputs = document.querySelectorAll('.code-input');
-            const hiddenInput = document.getElementById('verificationCode');
+            const otpInput = document.getElementById('otpCode');
             const verificationForm = document.getElementById('verificationForm');
             const verificationFormContainer = document.getElementById('verificationFormContainer');
             const verificationSuccess = document.getElementById('verificationSuccess');
@@ -879,11 +992,11 @@ $password = $registerData['password'];
                             codeInputs[index + 1].focus();
                         }
                         
-                        updateHiddenInput();
+                        updateOtpInput();
                         
                         // Auto-verify when all 6 digits are filled
-                        if (hiddenInput.value.length === 6) {
-                            setTimeout(() => verifyCode(), 300);
+                        if (otpInput.value.length === 6) {
+                            setTimeout(() => verifyOtp(), 300);
                         }
                     } else {
                         e.target.classList.remove('filled');
@@ -895,7 +1008,7 @@ $password = $registerData['password'];
                         codeInputs[index - 1].focus();
                         codeInputs[index - 1].value = '';
                         codeInputs[index - 1].classList.remove('filled');
-                        updateHiddenInput();
+                        updateOtpInput();
                     }
                 });
                 
@@ -912,10 +1025,10 @@ $password = $registerData['password'];
                             }
                         });
                         
-                        updateHiddenInput();
+                        updateOtpInput();
                         codeInputs[5].focus();
                         
-                        setTimeout(() => verifyCode(), 300);
+                        setTimeout(() => verifyOtp(), 300);
                     }
                 });
                 
@@ -924,35 +1037,37 @@ $password = $registerData['password'];
                 });
             });
 
-            function updateHiddenInput() {
+            function updateOtpInput() {
                 const code = Array.from(codeInputs).map(input => input.value).join('');
-                hiddenInput.value = code;
+                otpInput.value = code;
                 return code;
             }
 
             // Form submission
             verificationForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                await verifyCode();
+                await verifyOtp();
             });
 
             // Resend code functionality
             document.getElementById('resendLink').addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (verificationTimer.isExpired()) {
-                    await resendCode();
+                    await resendOtp();
                 }
             });
 
             // Lockout resend functionality
             lockoutResendLink.addEventListener('click', async (e) => {
                 e.preventDefault();
-                await resendCode(true); // Force resend even in lockout
+                await resendOtp(true);
             });
 
-            async function verifyCode() {
+            async function verifyOtp() {
                 // Check if locked out
-                if (lockoutManager.checkAndShowLockout()) {
+                if (attemptManager.isLocked()) {
+                    const remainingTime = attemptManager.getRemainingLockoutTime();
+                    lockoutManager.showLockout(remainingTime);
                     showError('Please wait before trying again.');
                     return;
                 }
@@ -962,8 +1077,8 @@ $password = $registerData['password'];
                     return;
                 }
 
-                const code = hiddenInput.value;
-                if (code.length !== 6) {
+                const otp = otpInput.value;
+                if (otp.length !== 6) {
                     showError('Please enter all 6 digits');
                     codeInputs.forEach(input => {
                         if (!input.value) {
@@ -983,26 +1098,23 @@ $password = $registerData['password'];
                 codeInputs.forEach(input => input.classList.remove('error'));
 
                 try {
-                    const response = await fetch('/api/verify-code', {
+                    const formData = new FormData(verificationForm);
+                    
+                    const response = await fetch(verificationForm.action, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ 
-                            code: code,
-                            attempts: attemptManager.attempts + 1,
-                            timestamp: Math.floor(Date.now() / 1000)
-                        })
+                        body: formData
                     });
 
                     const data = await response.json();
                     
                     if (data.success) {
                         // Clear all storage on success
-                        localStorage.removeItem('verification_timer');
-                        localStorage.removeItem('verification_attempts');
-                        localStorage.removeItem('lockout_end');
+                        localStorage.removeItem('student_verification_timer_{{ $email }}');
+                        localStorage.removeItem('student_verification_attempts_{{ $email }}');
                         
                         // Show success state
                         verificationFormContainer.style.display = 'none';
@@ -1016,26 +1128,27 @@ $password = $registerData['password'];
                             
                             if (countdown < 0) {
                                 clearInterval(countdownInterval);
-                                window.location.href = data.redirect || '/dashboard';
+                                window.location.href = data.redirect || '/student/dashboard';
                             }
                         }, 1000);
                         
                         setTimeout(() => {
-                            window.location.href = data.redirect || '/dashboard';
+                            window.location.href = data.redirect || '/student/dashboard';
                         }, 3000);
                     } else {
                         // Increment attempt counter
                         const currentAttempts = attemptManager.incrementAttempt();
                         
-                        if (currentAttempts >= attemptManager.maxAttempts) {
+                        if (currentAttempts >= maxAttempts) {
                             // Lock out user
                             showError('Too many attempts. Please wait 15 minutes before trying again.');
-                            lockoutManager.checkAndShowLockout();
+                            const remainingTime = attemptManager.getRemainingLockoutTime();
+                            lockoutManager.showLockout(remainingTime);
                             verifyBtn.classList.remove('verifying');
                             verifyBtn.classList.add('locked');
                             verifyBtn.querySelector('span').textContent = 'Locked';
                         } else {
-                            showError(data.message || `Invalid code. ${attemptManager.maxAttempts - currentAttempts} attempt${attemptManager.maxAttempts - currentAttempts !== 1 ? 's' : ''} remaining.`);
+                            showError(data.message || `Invalid OTP. ${maxAttempts - currentAttempts} attempt${maxAttempts - currentAttempts !== 1 ? 's' : ''} remaining.`);
                             
                             // Visual feedback for wrong code
                             codeInputs.forEach(input => input.classList.add('error'));
@@ -1046,7 +1159,7 @@ $password = $registerData['password'];
                                     input.value = '';
                                     input.classList.remove('filled', 'error');
                                 });
-                                hiddenInput.value = '';
+                                otpInput.value = '';
                                 codeInputs[0].focus();
                             }, 1500);
                         }
@@ -1058,25 +1171,29 @@ $password = $registerData['password'];
                     verifyBtn.disabled = false;
                     verifyBtn.classList.remove('verifying');
                     loadingSpinner.style.display = 'none';
-                    verifyBtn.querySelector('span').textContent = 'Verify Code';
+                    verifyBtn.querySelector('span').textContent = 'Verify & Complete Registration';
                 }
             }
 
-            async function resendCode(force = false) {
+            async function resendOtp(force = false) {
                 // Check if locked out (unless forcing)
-                if (!force && lockoutManager.checkAndShowLockout()) {
+                if (!force && attemptManager.isLocked()) {
+                    const remainingTime = attemptManager.getRemainingLockoutTime();
+                    lockoutManager.showLockout(remainingTime);
                     showError('Please wait before requesting a new code.');
                     return;
                 }
 
                 try {
-                    const response = await fetch('/api/resend-code', {
+                    const response = await fetch('{{ route("resend-student-otp") }}', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
+                            email: '{{ $email }}',
                             reset_attempts: true
                         })
                     });
@@ -1093,16 +1210,16 @@ $password = $registerData['password'];
                             input.value = '';
                             input.classList.remove('filled', 'error', 'locked');
                         });
-                        hiddenInput.value = '';
+                        otpInput.value = '';
                         codeInputs[0].focus();
                         
                         // If coming from lockout, hide lockout screen
                         lockoutManager.hideLockout();
                     } else {
-                        showError(data.message || 'Failed to resend code');
+                        showError(data.message || 'Failed to resend OTP');
                     }
                 } catch (error) {
-                    showError('Failed to resend code. Please try again.');
+                    showError('Failed to resend OTP. Please try again.');
                 }
             }
 

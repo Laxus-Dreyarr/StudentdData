@@ -235,8 +235,11 @@ class StudentController extends Controller
                 // Generate verification code (6 digits)
                 $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+                $studentId = $this->generateUniqueStudentId();
+
                 Cache::put('registration_' . $request->email, [
                     'otp' => $verificationCode,
+                    'id' => $studentId,
                     'firstName' => $request->firstName,
                     'lastName' => $request->lastName,
                     'middlename' => $request->middlename,
@@ -251,13 +254,13 @@ class StudentController extends Controller
                     'province' => $request->province,
                     'municipality' => $request->municipality,
                     'barangay' => $request->barangay,
-                    'zip_code' => $request->zip_code,
+                    'zip_code' => $request->zipcode,
                     'relationship_status' => $request->status,
                     'is_regular' => '2',
                     'year_level' => "NONE",
                     'curriculum' => $assignedCurriculum,
                     'attempts' => 0
-                ], now()->addMinutes(10));
+                ], now()->addMinutes(1));
 
                 session(['registration_email' => $request->email]);
 
@@ -307,8 +310,11 @@ class StudentController extends Controller
                 // Generate verification code (6 digits)
                 $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+                $studentId = $this->generateUniqueStudentId();
+
                 Cache::put('registration_' . $request->email, [
                     'otp' => $verificationCode,
+                    'id' => $studentId,
                     'studentId' => $request->studentId,
                     'firstName' => $request->firstName,
                     'lastName' => $request->lastName,
@@ -323,13 +329,13 @@ class StudentController extends Controller
                     'province' => $request->province,
                     'municipality' => $request->municipality,
                     'barangay' => $request->barangay,
-                    'zip_code' => $request->zip_code,
+                    'zip_code' => $request->zipcode,
                     'relationship_status' => $request->status,
                     'is_regular' => '1',
                     'year_level' => "1st Year",
                     'curriculum' => $assignedCurriculum,
                     'attempts' => 0
-                ], now()->addMinutes(10));
+                ], now()->addMinutes(1));
 
                 session(['registration_email' => $request->email]);
 
@@ -375,6 +381,25 @@ class StudentController extends Controller
                 'message' => 'An error occurred: ' . $e->getMessage()
             ]);
         }
+    }
+
+
+    private function generateUniqueStudentId()
+    {
+        $maxAttempts = 10;
+        $attempt = 0;
+
+        do {
+            $studentId = mt_rand(100000, 999999);
+            $exists = User::where('id', $studentId)->exists();
+            $attempt++;
+
+            if ($attempt >= $maxAttempts) {
+                throw new \Exception('Unable to generate unique student ID after ' . $maxAttempts . ' attempts');
+            }
+        } while ($exists);
+
+        return $studentId;
     }
 
 }
