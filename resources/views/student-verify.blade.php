@@ -523,10 +523,10 @@ $password = $registerData['password'];
                 <span class="info-label">Email:</span>
                 <span class="info-value">{{ $registerData['email'] }}</span>
             </div>
-            <div class="student-info-item">
+            <!-- <div class="student-info-item">
                 <span class="info-label">Curriculum:</span>
                 <span class="info-value">{{ $registerData['curriculum'] }}</span>
-            </div>
+            </div> -->
         </div>
         @endif
         
@@ -616,8 +616,9 @@ $password = $registerData['password'];
         // Initialize attempt counter from cache data
         const initialAttempts = <?php echo json_encode($registerData['attempts'] ?? 0); ?>;
         const maxAttempts = 3;
-        const lockoutDuration = 900; // 15 minutes in seconds
-        const otpDuration = 600; // 10 minutes in seconds (matching your cache)
+        // const lockoutDuration = 900; // 15 minutes in seconds
+        const lockoutDuration = 5; // 15 minutes in seconds
+        const otpDuration = 120; // 10 minutes in seconds (matching your cache)
 
          // Clear previous localStorage entries for this email when page loads
         localStorage.removeItem('student_verification_attempts_' + <?php echo json_encode($email); ?>);
@@ -747,7 +748,7 @@ $password = $registerData['password'];
                 this.timerElement = document.getElementById('timer');
                 this.timerProgress = document.getElementById('timerProgress');
                 this.verifyBtn = document.getElementById('verifyBtn');
-                this.resendLink = document.getElementById('resendLink');
+                // this.resendLink = document.getElementById('resendLink');
                 this.codeInputs = document.querySelectorAll('.code-input');
                 this.interval = null;
                 this.remainingTime = 0;
@@ -787,11 +788,6 @@ $password = $registerData['password'];
                         this.onTimerComplete();
                     }
                     
-                    // Auto-save progress every 5 seconds
-                    if (this.remainingTime % 5 === 0) {
-                        const startTime = Math.floor(Date.now() / 1000) - (otpDuration - this.remainingTime);
-                        localStorage.setItem(this.storageKey, startTime.toString());
-                    }
                 }, 1000);
             }
 
@@ -823,16 +819,17 @@ $password = $registerData['password'];
                 this.timerProgress.style.transform = 'scaleX(0)';
                 this.timerElement.classList.add('timer-expired');
                 this.verifyBtn.disabled = true;
-                this.resendLink.disabled = false;
+                // this.resendLink.disabled = false;
                 this.updateInputsState(true);
                 localStorage.removeItem(this.storageKey);
                 showError('Verification code has expired. Please request a new one.');
                 
                 // Clear server cache and session when timer expires
-                this.clearCacheOnServer();
+                this.clearCacheAndReload();
             }
 
-            async clearCacheOnServer() {
+            async clearCacheAndReload() {
+                console.log('clearCacheAndReload called');
                 try {
                     // Call server to clear cache when timer expires
                     await fetch('/api/clear-lockout-cache', {
@@ -845,9 +842,17 @@ $password = $registerData['password'];
                             email: '<?php echo $email; ?>'
                         })
                     });
+                    console.log('Cache cleared successfully');
                 } catch (error) {
                     console.error('Failed to clear cache:', error);
                 }
+                
+                // Reload the page after 1 second
+                console.log('Setting reload timeout');
+                setTimeout(() => {
+                    console.log('Reloading page now');
+                    window.location.reload();
+                }, 1000);
             }
 
             resetTimer() {
@@ -911,6 +916,7 @@ $password = $registerData['password'];
                             email: '<?php echo $email; ?>'
                         })
                     });
+                    window.location.reload();
                 } catch (error) {
                     console.error('Failed to clear cache:', error);
                 }
@@ -1050,12 +1056,12 @@ $password = $registerData['password'];
             });
 
             // Resend code functionality
-            document.getElementById('resendLink').addEventListener('click', async (e) => {
-                e.preventDefault();
-                if (verificationTimer.isExpired()) {
-                    await resendOtp();
-                }
-            });
+            // document.getElementById('resendLink').addEventListener('click', async (e) => {
+            //     e.preventDefault();
+            //     if (verificationTimer.isExpired()) {
+            //         await resendOtp();
+            //     }
+            // });
 
             // Lockout resend functionality
             lockoutResendLink.addEventListener('click', async (e) => {

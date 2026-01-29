@@ -165,7 +165,7 @@ Route::post('/verify-student-otp', function (Illuminate\Http\Request $request) {
         return response()->json([
             'success' => true,
             'message' => 'Registration successful! Your account has been created.',
-            'redirect' => '/login' // Redirect to login page
+            'redirect' => '/' // Redirect to login page
         ]);
         
     } catch (\Exception $e) {
@@ -185,8 +185,7 @@ Route::post('/api/clear-lockout-cache', function (Illuminate\Http\Request $reque
     
     return response()->json([
         'success' => true,
-        'message' => 'Cache cleared',
-        'redirect' => '/'
+        'message' => 'Cache cleared'
     ]);
 });
 
