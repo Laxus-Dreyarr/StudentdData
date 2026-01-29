@@ -381,15 +381,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Email validation for EVSU email
-        if (!validateEVSUEmail(email)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid Email Address',
-                html: 'Please enter a valid EVSU email address<br>',
-                confirmButtonColor: '#EF4444'
-            });
-            return;
-        }
+        // if (!validateEVSUEmail(email)) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Invalid Email Address',
+        //         html: 'Please enter a valid EVSU email address<br>',
+        //         confirmButtonColor: '#EF4444'
+        //     });
+        //     return;
+        // }
 
         // Student ID validation (format: YYYY-XXXXX)
         if (!validateStudentId(studentId)) {
@@ -600,18 +600,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Optional: Add real-time validation for email
-    document.getElementById('registerEmail').addEventListener('blur', function(e) {
-        const value = e.target.value;
-        const isValid = validateEVSUEmail(value);
+    // document.getElementById('registerEmail').addEventListener('blur', function(e) {
+    //     const value = e.target.value;
+    //     const isValid = validateEVSUEmail(value);
         
-        if (value && !isValid) {
-            e.target.style.borderColor = '#EF4444';
-            e.target.setAttribute('title', 'Must be @evsu.edu.ph email');
-        } else {
-            e.target.style.borderColor = '';
-            e.target.removeAttribute('title');
-        }
-    });
+    //     if (value && !isValid) {
+    //         e.target.style.borderColor = '#EF4444';
+    //         e.target.setAttribute('title', 'Must be @evsu.edu.ph email');
+    //     } else {
+    //         e.target.style.borderColor = '';
+    //         e.target.removeAttribute('title');
+    //     }
+    // });
 
     // Optional: Add real-time validation for names
     ['firstName', 'lastName', 'middlename'].forEach(id => {
