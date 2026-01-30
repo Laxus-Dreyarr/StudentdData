@@ -67,9 +67,7 @@ class AuthHandler {
                 this.showMessage('success', data.message);
                 
                 // Redirect to dashboard after short delay
-                setTimeout(() => {
-                    window.location.href = data.redirect || '/dashboard';
-                }, 1500);
+                
             } else {
                 // Show error message
                 this.showMessage('error', data.message || 'Login failed');
@@ -84,17 +82,19 @@ class AuthHandler {
 
     setLoading(isLoading) {
         if (this.loginButton) {
+            const loginButton = document.getElementById('loginButton');
             const spinner = this.loginButton.querySelector('.spinner');
             const buttonText = this.loginButton.querySelector('.btn-text');
             
             if (isLoading) {
                 this.loginButton.disabled = true;
                 spinner.style.display = 'inline-block';
-                buttonText.style.visibility = 'hidden';
+                buttonText.textContent = 'Signing in...';
             } else {
                 this.loginButton.disabled = false;
                 spinner.style.display = 'none';
-                buttonText.style.visibility = 'visible';
+                // buttonText.style.visibility = 'visible'; 
+                buttonText.textContent = 'Sign In to Dashboard';
             }
         }
     }
