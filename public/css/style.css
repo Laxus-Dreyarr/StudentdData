@@ -681,11 +681,13 @@ body::before {
 
 /* Registration state background for left panel */
 .left-panel.register-mode {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    background-size: cover;
+    /* background-image: url('/img/evsuimg.jpg'); */
+    background: url('/img/bg1.jpeg'), linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background-size:cover;
     background-position: center;
     background-repeat: no-repeat;
     height: 230vh;
+    text-align: start;
 }
 
 /* Optional: Add overlay for better text readability */
@@ -848,6 +850,79 @@ body::before {
     color: #EF4444 !important;
     transform: rotate(90deg) !important;
     background: none !important;
+}
+
+/* Loading spinner */
+.spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Alert messages */
+.alert-message {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: inherit;
+    padding: 0;
+    margin-left: 10px;
+}
+
+/* Button loading state */
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {

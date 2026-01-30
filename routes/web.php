@@ -24,6 +24,21 @@ Route::get('/', function () {
 // Student Routes
 Route::prefix('/exe')->group(function (){
     Route::post('/student', [StudentController::class, 'register']);
+
+    // Authentication
+    Route::post('/login', [StudentController::class, 'login']);
+    Route::post('/logout', [StudentController::class, 'logout']);
+    Route::post('/forgot-password', [StudentController::class, 'forgotPassword']);
+    Route::get('/user', [StudentController::class, 'user']);
+});
+
+// Protected routes (require authentication)
+Route::middleware(['auth:student'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    });
+    
+    // Add other protected routes here
 });
 
 // Show verification form (already exists)

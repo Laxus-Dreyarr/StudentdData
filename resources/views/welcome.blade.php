@@ -88,7 +88,7 @@
             <div class="right-panel col-lg-6">
                 <div class="form-header">
                     <h2>Welcome to EVSU Ormoc</h2>
-                    <p>Sign in to your account EnrollSys or create a new one to get started</p>
+                    <p>Sign in to your EnrollSys account or create a new one to get started.</p>
                 </div>
                 
                 <!-- Tab Navigation -->
@@ -146,9 +146,9 @@
                                 <span class="btn-text">Sign In to Dashboard</span>
                             </button>
                             
-                            <div class="text-center mt-4">
+                            <!-- <div class="text-center mt-4">
                                 <p class="text-muted">Don't have an account? <a href="#" class="forgot-link switch-tab" data-target="registerForm">Create one now</a></p>
-                            </div>
+                            </div> -->
                         </form>
                     </div>
                     
@@ -312,9 +312,9 @@
                                 <span class="btn-text">Create Account</span>
                             </button>
                             
-                            <div class="text-center mt-4">
+                            <!-- <div class="text-center mt-4">
                                 <p class="text-muted">Already have an account? <a href="#" class="forgot-link switch-tab" data-target="loginForm">Sign in here</a></p>
-                            </div>
+                            </div> -->
                         </form>
                     </div>
                 </div>
@@ -489,6 +489,7 @@
      <script src="{{asset('js/jquery.js')}}"></script>
     <!-- <script src="script.js"></script> -->
      <script src="{{asset('js/function/index.js')}}"></script>
+     <script src="{{ asset('js/function/student.auth.js') }}"></script>
     <script src="{{asset('js/sweetalert2.js')}}"></script>
     <script src="{{ asset('js/psgc/psgc-handler.js') }}"></script>
     <script src="{{ asset('js/psgc/smart-zip-codes.js') }}"></script>

@@ -402,4 +402,163 @@ class StudentController extends Controller
         return $studentId;
     }
 
+    // LOGIN
+    /**
+     * Handle student login
+     */
+    public function login(Request $request)
+    {
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if user exists
+        $user = User::where('email2', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or password'
+            ], 401);
+        }
+
+        // Check if user is active
+        if (!$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is deactivated. Please contact administrator.'
+            ], 401);
+        }
+
+        // Check if user is a student
+        if ($user->user_type !== 'student') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only students can login here.'
+            ], 403);
+        }
+
+        // Verify password
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or password'
+            ], 401);
+        }
+
+        // Update last login
+        $user->last_login = Carbon::now();
+        $user->save();
+
+        // Log the user in
+        Auth::guard('student')->login($user, $request->has('remember'));
+
+        // Prepare response data
+        $responseData = [
+            'success' => true,
+            'message' => 'Login successful!',
+            'redirect' => '/dashboard', // Change this to your dashboard route
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email2,
+                'type' => $user->user_type,
+                'profile' => $user->profile,
+                'student_info' => $user->user_information
+            ]
+        ];
+
+        return response()->json($responseData);
+    }
+
+    /**
+     * Handle student logout
+     */
+    public function logout(Request $request)
+    {
+        Auth::guard('student')->logout();
+        
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully'
+        ]);
+    }
+
+    /**
+     * Get authenticated user
+     */
+    public function user(Request $request)
+    {
+        $user = Auth::guard('student')->user();
+        
+        if ($user) {
+            return response()->json([
+                'success' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email2,
+                    'type' => $user->user_type,
+                    'profile' => $user->profile,
+                    'full_name' => $user->user_information ? 
+                        $user->user_information->firstname . ' ' . $user->user_information->lastname : null,
+                    'student_id' => $user->student ? $user->student->id_no : null
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Not authenticated'
+        ], 401);
+    }
+
+    /**
+     * Handle forgot password
+     */
+    public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid email address'
+            ], 422);
+        }
+
+        $user = User::where('email2', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email not found in our system'
+            ], 404);
+        }
+
+        // Here you would typically:
+        // 1. Generate a password reset token
+        // 2. Send email with reset link
+        // 3. Return success message
+
+        // For now, just return success
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset instructions have been sent to your email.'
+        ]);
+    }
+
 }

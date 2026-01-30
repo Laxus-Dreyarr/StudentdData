@@ -41,6 +41,12 @@ return [
             'provider' => 'users',
         ],
 
+        'api' => [
+            'driver' => 'token',
+            'provider' => 'users',
+            'hash' => false,
+        ],
+
         'admin' => [ // Add admin guard
             'driver' => 'session',
             'provider' => 'admins',
@@ -100,25 +106,25 @@ return [
             'model' => App\Models\User::class,
         ],
 
-        'admins' => [ // Add admin provider
-            'driver' => 'eloquent',
-            'model' => App\Models\Admin::class,
-        ],
+        // 'admins' => [ // Add admin provider
+        //     'driver' => 'eloquent',
+        //     'model' => App\Models\Admin::class,
+        // ],
 
         'students' => [ // Add admin provider
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
         ],
 
-        'instructors' => [ // Add admin provider
-            'driver' => 'eloquent',
-            'model' => App\Models\Instructor::class,
-        ],
+        // 'instructors' => [ // Add admin provider
+        //     'driver' => 'eloquent',
+        //     'model' => App\Models\Instructor::class,
+        // ],
 
-        'orgs' => [ // Add admin provider
-            'driver' => 'eloquent',
-            'model' => App\Models\Organization::class,
-        ],
+        // 'orgs' => [ // Add admin provider
+        //     'driver' => 'eloquent',
+        //     'model' => App\Models\Organization::class,
+        // ],
     ],
 
     'redirects' => [

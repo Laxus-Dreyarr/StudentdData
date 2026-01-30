@@ -209,26 +209,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Login form submission
-    loginFormElement.addEventListener('submit', function(e) {
-        e.preventDefault();
+    // loginFormElement.addEventListener('submit', function(e) {
+    //     e.preventDefault();
 
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+    //     const email = document.getElementById('loginEmail').value;
+    //     const password = document.getElementById('loginPassword').value;
 
-        // Validation
-        if (!validateEmail(email)) {
-            showAlert(loginAlert, 'Please enter a valid email address', 'error');
-            return;
-        }
+    //     // Validation
+    //     if (!validateEmail(email)) {
+    //         showAlert(loginAlert, 'Please enter a valid email address', 'error');
+    //         return;
+    //     }
 
-        if (password.length < 6) {
-            showAlert(loginAlert, 'Password must be at least 6 characters', 'error');
-            return;
-        }
+    //     if (password.length < 6) {
+    //         showAlert(loginAlert, 'Password must be at least 6 characters', 'error');
+    //         return;
+    //     }
 
-        // Simulate login process
-        simulateLogin(email, password);
-    });
+    //     // Simulate login process
+    //     simulateLogin(email, password);
+    // });
 
     // Registration form submission
     registerFormElement.addEventListener('submit', function(e) {
