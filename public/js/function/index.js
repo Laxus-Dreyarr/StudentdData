@@ -178,11 +178,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
             
     // Password visibility toggle
-    loginPasswordToggle.addEventListener('click', function() {
-        const passwordInput = document.getElementById('loginPassword');
-        const icon = this.querySelector('i');
-        togglePasswordVisibility(passwordInput, icon);
-    });
+    // loginPasswordToggle.addEventListener('click', function() {
+    //     const passwordInput = document.getElementById('loginPassword');
+    //     const icon = this.querySelector('i');
+    //     togglePasswordVisibility(passwordInput, icon);
+    // });
 
     registerPasswordToggle.addEventListener('click', function() {
         const passwordInput = document.getElementById('registerPassword');
