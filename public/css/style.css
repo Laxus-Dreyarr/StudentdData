@@ -682,7 +682,7 @@ body::before {
 /* Registration state background for left panel */
 .left-panel.register-mode {
     /* background-image: url('/img/evsuimg.jpg'); */
-    background: url('/img/bg1.jpeg'), linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background: url('/img/9117609.jpg'), linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     background-size:cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -925,9 +925,14 @@ body::before {
     cursor: not-allowed;
 }
 
+.glass-card {
+  display: flex;
+  flex-direction: row;
+}
+
 @media (max-width: 1200px) {
     .activity-card {
-grid-column: span 1;
+        grid-column: span 1;
     }
 }
 
@@ -1052,6 +1057,7 @@ grid-column: span 1;
     .dashboard-grid {
         grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     }
+    
 }
 
 @media (max-width: 768px) {
@@ -1087,6 +1093,44 @@ grid-column: span 1;
         gap: 15px;
         justify-content: center;
     }
+
+    body {
+        padding: 0px;
+    }
+
+    .glass-card {
+    flex-direction: column;
+  }
+  
+  /* Reverse the order of panels */
+  .left-panel {
+    order: 2; /* Moves to bottom */
+  }
+  
+  .right-panel {
+    order: 1; /* Moves to top */
+  }
+  
+  /* Adjust the left panel height for mobile */
+  .left-panel.register-mode {
+    height: 100vh; /* Adjust as needed - much smaller than 230vh */
+    min-height: 400px; /* Ensure minimum height */
+    background: url('/img/6026986.jpg'), linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  /* Ensure both panels take proper height */
+  .left-panel,
+  .right-panel {
+    width: 100%;
+  }
+  
+  /* Adjust right panel for mobile */
+  .right-panel {
+    min-height: auto;
+  }
 }
 
 /* Utility Classes */
