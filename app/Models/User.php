@@ -27,6 +27,18 @@ class User extends Authenticatable
         'password', 'remember_token',
     ];
 
+    // Define the column used for authentication (email)
+    public function getEmailForPasswordReset()
+    {
+        return $this->email2;
+    }
+
+    // Define the username field for authentication
+    public function username()
+    {
+        return 'email2';
+    }
+
     // Specify the guard for this model
     protected $guard = 'student';
 
