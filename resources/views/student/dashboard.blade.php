@@ -172,7 +172,7 @@
                 <section class="welcome-section">
                     <div class="welcome-content">
                         <h1>Welcome back, James!</h1>
-                        <p>You have 2 upcoming assignments and 1 quiz this week. Your next class starts in 45 minutes.</p>
+                        <!-- <p>You have 2 upcoming assignments and 1 quiz this week. Your next class starts in 45 minutes.</p> -->
                         
                         <div class="welcome-stats">
                             <div class="welcome-stat">
@@ -190,8 +190,8 @@
                                     <i class="fas fa-check-circle"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <h3>94%</h3>
-                                    <p>Attendance</p>
+                                    <h3>5</h3>
+                                    <p>Subjects</p>
                                 </div>
                             </div>
                             
@@ -210,7 +210,7 @@
                 
                 <!-- Dashboard Grid -->
                 <div class="dashboard-grid">
-                    <!-- Today's Schedule -->
+                    
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h5 class="card-title"><i class="fas fa-calendar-day"></i> Today's Schedule</h5>
