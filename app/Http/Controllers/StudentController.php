@@ -12,8 +12,10 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use App\Models\UserInfo;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\SubjectSchedule;
+use App\Models\EnrolledSubjects;
+use App\Models\Subject;
+use App\Models\Curriculum;
 use App\Mail\RegistrationVerification;
 use App\Mail\SendQuestion;
 use Illuminate\Support\Facades\Log;
@@ -568,6 +570,8 @@ class StudentController extends Controller
 
         
         $user = Auth::guard('student')->user();
+        $student = $user->user_information->student;
+        $studentID = $student->id;
 
         // Get current date for SY and SEM calculation
         $currentYear = date('Y');
@@ -588,12 +592,195 @@ class StudentController extends Controller
 
         $sem = $semester;
 
+        // Check if student has enrolled subjects
+        $hasEnrolledSubjects = EnrolledSubjects::where('student_id', $student->id)->exists();
+        
+        // If no enrolled subjects, get available subjects for their curriculum
+        $availableSubjects = [];
+        if (!$hasEnrolledSubjects) {
+            // Get curriculum_id from curriculum table based on student's curriculum year
+            $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
+            
+            if ($curriculum) {
+                // Get subjects for this curriculum, ordered by year level and semester
+                $availableSubjects = Subject::where('curriculum_id', $curriculum->id)
+                    ->where('is_active', 1)
+                    ->orderByRaw("
+                        CASE year_level 
+                            WHEN '1st Year' THEN 1
+                            WHEN '2nd Year' THEN 2
+                            WHEN '3rd Year' THEN 3
+                            WHEN '4th Year' THEN 4
+                            WHEN '5th Year' THEN 5
+                            ELSE 6
+                        END,
+                        CASE semester
+                            WHEN '1st Sem' THEN 1
+                            WHEN '2nd Sem' THEN 2
+                            WHEN 'Summer' THEN 3
+                            ELSE 4
+                        END,
+                        code
+                    ")
+                    ->get()
+                    ->groupBy(['year_level', 'semester']);
+            }
+        }
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
-            'sem'
+            'sem',
+            'hasEnrolledSubjects',
+            'availableSubjects',
+            'studentID'
         ));
 
+    }
+
+
+    // Add a new method to handle subject enrollment submission
+    public function enrollSubjects(Request $request)
+    {
+        try {
+            $studentId = $request->input('student_id');
+            $enrolledSubjects = $request->input('enrolled_subjects');
+            
+            // Validate student exists
+            $student = Student::where('id', $studentId)->first();
+            if (!$student) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Student not found'
+                ]);
+            }
+            
+            // Validate input
+            if (empty($enrolledSubjects) || !is_array($enrolledSubjects)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No subjects selected'
+                ]);
+            }
+            
+            $enrollments = [];
+            $totalGradePoints = 0;
+            $totalUnits = 0;
+            
+            // Process each subject
+            foreach ($enrolledSubjects as $subject) {
+                if (!isset($subject['subject_id'], $subject['grade'])) {
+                    continue;
+                }
+                
+                // Get subject details for units
+                $subjectDetail = Subject::find($subject['subject_id']);
+                if (!$subjectDetail) {
+                    continue;
+                }
+                
+                // Convert grade to numeric for GWA calculation
+                $numericGrade = $this->convertGradeToNumeric($subject['grade']);
+                
+                // Save to enrolled_subjects table
+                EnrolledSubjects::create([
+                    'student_id' => $studentId,
+                    'subject_id' => $subject['subject_id'],
+                    'grade' => $subject['grade']
+                ]);
+                
+                // Calculate for GWA
+                $units = $subjectDetail->units ?: 3; // Default to 3 units if not specified
+                $totalGradePoints += ($numericGrade * $units);
+                $totalUnits += $units;
+                
+                $enrollments[] = [
+                    'subject_id' => $subject['subject_id'],
+                    'grade' => $subject['grade'],
+                    'units' => $units
+                ];
+            }
+            
+            // Calculate GWA
+            $gwa = $totalUnits > 0 ? $totalGradePoints / $totalUnits : 0;
+            
+            // Update student status to officially enrolled
+            $student->status = 'Officially Enrolled';
+            $student->enrolled = 1;
+            $student->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Subjects enrolled successfully',
+                'gwa' => number_format($gwa, 2),
+                'enrollment_count' => count($enrollments)
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Helper method to convert letter grades to numeric
+    private function convertGradeToNumeric($grade)
+    {
+        // $gradeMap = [
+        //     '1.00' => 1.00,
+        //     '1.25' => 1.25,
+        //     '1.50' => 1.50,
+        //     '1.75' => 1.75,
+        //     '2.00' => 2.00,
+        //     '2.25' => 2.25,
+        //     '2.50' => 2.50,
+        //     '2.75' => 2.75,
+        //     '3.00' => 3.00,
+        //     '4.00' => 4.00,
+        //     '5.00' => 5.00,
+        //     'INC' => 0,
+        //     'DRP' => 0,
+        //     'PASS' => 1.00,
+        //     'FAIL' => 5.00
+        // ];
+
+        $gradeMap = [
+            // Passing Grades
+            '1.0' => 1.0,
+            '1.1' => 1.1,
+            '1.2' => 1.2,
+            '1.3' => 1.3,
+            '1.4' => 1.4,
+            '1.5' => 1.5,
+            '1.6' => 1.6,
+            '1.7' => 1.7,
+            '1.8' => 1.8,
+            '1.9' => 1.9,
+            '2.0' => 2.0,
+            '2.1' => 2.1,
+            '2.2' => 2.2,
+            '2.3' => 2.3,
+            '2.4' => 2.4,
+            '2.5' => 2.5,
+            '2.6' => 2.6,
+            '2.7' => 2.7,
+            '2.8' => 2.8,
+            '2.9' => 2.9,
+            '3.0' => 3.0,
+
+            // Failing and Special Grades
+            '4.0' => 4.0,
+            '5.0' => 5.0,
+            'INC' => 0.0,
+            'DRP' => 0.0,
+            
+            // Original descriptive mappings
+            'PASS' => 1.0,
+            'FAIL' => 5.0,
+        ];
+
+        return $gradeMap[$grade] ?? 0;
     }
 
     /**

@@ -44,6 +44,8 @@ Route::prefix('/exe')->group(function (){
 Route::middleware(['student.auth'])->group(function () {
     Route::get('/student-dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
     Route::post('/student/logout', [StudentController::class, 'logout'])->name('student.logout');
+
+    Route::post('/student/enroll-subjects', [StudentController::class, 'enrollSubjects'])->name('student.enrollSubjects');
     // Add other protected routes here
 });
 
