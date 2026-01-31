@@ -180,6 +180,393 @@
             }
         }
 
+        // ---------------------------------
+        // Add these functions to the handleEnrollment function
+
+// Toggle between table and dropdown views
+// Initialize view toggle
+function initViewToggle() {
+    const tableViewBtn = document.getElementById('tableViewBtn');
+    const cardViewBtn = document.getElementById('cardViewBtn');
+    const quickAddBtnToggle = document.getElementById('quickAddBtnToggle');
+    const tableView = document.getElementById('tableView');
+    const cardView = document.getElementById('cardView');
+    
+    if (!tableViewBtn || !cardViewBtn) return;
+    
+    tableViewBtn.addEventListener('click', function() {
+        tableViewBtn.classList.add('active');
+        cardViewBtn.classList.remove('active');
+        quickAddBtnToggle.classList.remove('active');
+        tableView.style.display = 'block';
+        cardView.style.display = 'none';
+    });
+    
+    cardViewBtn.addEventListener('click', function() {
+        cardViewBtn.classList.add('active');
+        tableViewBtn.classList.remove('active');
+        quickAddBtnToggle.classList.remove('active');
+        cardView.style.display = 'block';
+        tableView.style.display = 'none';
+    });
+    
+    quickAddBtnToggle.addEventListener('click', function() {
+        // If we want a dedicated quick add view, implement it here
+        // For now, just switch to card view which has quick add
+        cardViewBtn.click();
+    });
+}
+
+// Sync selections to table view
+function syncSelectionsToTableView() {
+    selectedSubjects.forEach((subject, subjectId) => {
+        const checkbox = document.querySelector(`#subject_${subjectId}`);
+        const gradeSelect = document.querySelector(`.grade-select[data-subject-id="${subjectId}"]`);
+        const undoBtn = document.querySelector(`.undo-btn[data-subject-id="${subjectId}"]`);
+        const row = checkbox?.closest('.subject-row');
+        
+        if (checkbox && gradeSelect && row) {
+            checkbox.checked = true;
+            gradeSelect.disabled = false;
+            gradeSelect.value = subject.grade;
+            row.classList.add('selected');
+            if (undoBtn) undoBtn.style.display = 'block';
+        }
+    });
+}
+
+// Sync selections to dropdown view
+function syncSelectionsToDropdownView() {
+    selectedSubjects.forEach((subject, subjectId) => {
+        const checkbox = document.querySelector(`#subject_dropdown_${subjectId}`);
+        const gradeSelect = document.querySelector(`.grade-select-dropdown[data-subject-id="${subjectId}"]`);
+        const undoBtn = document.querySelector(`.undo-btn-dropdown[data-subject-id="${subjectId}"]`);
+        const card = checkbox?.closest('.subject-card');
+        const gradeSelectionDiv = card?.querySelector('.grade-selection');
+        
+        if (checkbox && gradeSelect && card) {
+            checkbox.checked = true;
+            gradeSelect.value = subject.grade;
+            card.classList.add('selected');
+            if (gradeSelectionDiv) gradeSelectionDiv.style.display = 'block';
+            if (undoBtn) undoBtn.style.display = 'block';
+        }
+    });
+}
+
+// Handle dropdown view selection
+function handleDropdownSelection() {
+    document.addEventListener('change', function(e) {
+        // Handle dropdown view checkboxes
+        if (e.target.classList.contains('subject-checkbox-dropdown')) {
+            const subjectId = e.target.dataset.subjectId;
+            const card = e.target.closest('.subject-card');
+            const gradeSelectionDiv = card?.querySelector('.grade-selection');
+            const gradeSelect = card?.querySelector('.grade-select-dropdown');
+            const undoBtn = card?.querySelector('.undo-btn-dropdown');
+            
+            if (e.target.checked) {
+                // Show grade selection
+                card.classList.add('selected');
+                if (gradeSelectionDiv) gradeSelectionDiv.style.display = 'block';
+                if (undoBtn) undoBtn.style.display = 'block';
+                
+                // Auto-select default grade
+                if (gradeSelect && gradeSelect.value === '') {
+                    gradeSelect.value = '3.0';
+                    updateSelectedSubject(subjectId, gradeSelect.value);
+                } else if (gradeSelect && gradeSelect.value) {
+                    updateSelectedSubject(subjectId, gradeSelect.value);
+                }
+            } else {
+                // Hide grade selection and remove subject
+                card.classList.remove('selected');
+                if (gradeSelectionDiv) gradeSelectionDiv.style.display = 'none';
+                if (undoBtn) undoBtn.style.display = 'none';
+                if (gradeSelect) gradeSelect.value = '';
+                removeSelectedSubject(subjectId);
+            }
+            
+            updateSummary();
+        }
+        
+        // Handle dropdown view grade selection
+        if (e.target.classList.contains('grade-select-dropdown') && e.target.value) {
+            const subjectId = e.target.dataset.subjectId;
+            const checkbox = document.querySelector(`#subject_dropdown_${subjectId}`);
+            
+            if (checkbox && checkbox.checked) {
+                updateSelectedSubject(subjectId, e.target.value);
+                updateSummary();
+            }
+        }
+    });
+    
+    // Handle dropdown view undo button
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.undo-btn-dropdown')) {
+            const subjectId = e.target.closest('.undo-btn-dropdown').dataset.subjectId;
+            const checkbox = document.querySelector(`#subject_dropdown_${subjectId}`);
+            
+            if (checkbox) {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+}
+
+// Handle quick add functionality
+function initQuickAdd() {
+    const quickYearSelect = document.getElementById('quickYearSelect');
+    const quickSemesterSelect = document.getElementById('quickSemesterSelect');
+    const quickSubjectSelect = document.getElementById('quickSubjectSelect');
+    const quickGradeSelect = document.getElementById('quickGradeSelect');
+    const quickAddBtn = document.getElementById('quickAddBtn');
+    
+    if (!quickAddBtn) return;
+    
+    // Filter subjects based on year and semester selection
+    if (quickYearSelect && quickSemesterSelect && quickSubjectSelect) {
+        quickYearSelect.addEventListener('change', filterQuickSubjects);
+        quickSemesterSelect.addEventListener('change', filterQuickSubjects);
+    }
+    
+    quickAddBtn.addEventListener('click', function() {
+        const subjectId = quickSubjectSelect.value;
+        const grade = quickGradeSelect.value;
+        
+        if (!subjectId) {
+            alert('Please select a subject first.');
+            return;
+        }
+        
+        if (!grade) {
+            alert('Please select a grade.');
+            return;
+        }
+        
+        const option = quickSubjectSelect.options[quickSubjectSelect.selectedIndex];
+        const subjectCode = option.text.split(' - ')[0];
+        const units = option.dataset.units || 3;
+        
+        // Add subject to selected subjects
+        if (!selectedSubjects.has(subjectId)) {
+            selectedSubjects.set(subjectId, {
+                id: subjectId,
+                code: subjectCode,
+                name: option.text.split(' - ')[1]?.split(' (')[0] || '',
+                grade: grade,
+                units: parseInt(units),
+                numericGrade: convertGradeToNumeric(grade)
+            });
+            
+            // Update UI in both views
+            updateCheckboxInBothViews(subjectId, true, grade);
+            updateSummary();
+            
+            // Reset quick add form
+            quickSubjectSelect.value = '';
+            quickGradeSelect.value = '';
+            
+            // Show success message
+            showToast(`Added ${subjectCode} with grade ${grade}`);
+        } else {
+            alert('This subject is already selected.');
+        }
+    });
+}
+
+// Filter quick add subjects
+function filterQuickSubjects() {
+    const year = document.getElementById('quickYearSelect').value;
+    const semester = document.getElementById('quickSemesterSelect').value;
+    const subjectSelect = document.getElementById('quickSubjectSelect');
+    
+    if (!subjectSelect) return;
+    
+    // Store all options
+    const allOptions = Array.from(subjectSelect.options);
+    
+    // Clear current options (except first)
+    subjectSelect.innerHTML = '<option value="">-- Select a subject --</option>';
+    
+    // Filter and add options
+    allOptions.forEach(option => {
+        if (option.value === '') return;
+        
+        const optionYear = option.dataset.year;
+        const optionSemester = option.dataset.semester;
+        
+        const matchesYear = !year || optionYear === year;
+        const matchesSemester = !semester || optionSemester === semester;
+        
+        if (matchesYear && matchesSemester) {
+            subjectSelect.appendChild(option);
+        }
+    });
+}
+
+// Update checkbox in both views
+function updateCheckboxInBothViews(subjectId, checked, grade) {
+    // Update table view
+    const tableViewCheckbox = document.querySelector(`#subject_${subjectId}`);
+    const tableViewGradeSelect = document.querySelector(`.grade-select[data-subject-id="${subjectId}"]`);
+    const tableViewUndoBtn = document.querySelector(`.undo-btn[data-subject-id="${subjectId}"]`);
+    const tableViewRow = tableViewCheckbox?.closest('.subject-row');
+    
+    if (tableViewCheckbox && tableViewRow) {
+        tableViewCheckbox.checked = checked;
+        
+        if (checked) {
+            tableViewRow.classList.add('selected');
+            if (tableViewGradeSelect) {
+                tableViewGradeSelect.disabled = false;
+                tableViewGradeSelect.value = grade;
+            }
+            if (tableViewUndoBtn) tableViewUndoBtn.style.display = 'block';
+        } else {
+            tableViewRow.classList.remove('selected');
+            if (tableViewGradeSelect) {
+                tableViewGradeSelect.disabled = true;
+                tableViewGradeSelect.value = '';
+            }
+            if (tableViewUndoBtn) tableViewUndoBtn.style.display = 'none';
+        }
+    }
+    
+    // Update dropdown view
+    const dropdownViewCheckbox = document.querySelector(`#subject_dropdown_${subjectId}`);
+    const dropdownViewGradeSelect = document.querySelector(`.grade-select-dropdown[data-subject-id="${subjectId}"]`);
+    const dropdownViewUndoBtn = document.querySelector(`.undo-btn-dropdown[data-subject-id="${subjectId}"]`);
+    const dropdownViewCard = dropdownViewCheckbox?.closest('.subject-card');
+    const dropdownViewGradeDiv = dropdownViewCard?.querySelector('.grade-selection');
+    
+    if (dropdownViewCheckbox && dropdownViewCard) {
+        dropdownViewCheckbox.checked = checked;
+        
+        if (checked) {
+            dropdownViewCard.classList.add('selected');
+            if (dropdownViewGradeDiv) dropdownViewGradeDiv.style.display = 'block';
+            if (dropdownViewGradeSelect) dropdownViewGradeSelect.value = grade;
+            if (dropdownViewUndoBtn) dropdownViewUndoBtn.style.display = 'block';
+        } else {
+            dropdownViewCard.classList.remove('selected');
+            if (dropdownViewGradeDiv) dropdownViewGradeDiv.style.display = 'none';
+            if (dropdownViewGradeSelect) dropdownViewGradeSelect.value = '';
+            if (dropdownViewUndoBtn) dropdownViewUndoBtn.style.display = 'none';
+        }
+    }
+}
+
+// Toggle year/semester sections
+function initSectionToggles() {
+    // Year level toggle
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.toggle-year')) {
+            const btn = e.target.closest('.toggle-year');
+            const year = btn.dataset.year;
+            const yearSection = btn.closest('.year-level-section');
+            
+            yearSection.classList.toggle('collapsed');
+            btn.classList.toggle('collapsed');
+        }
+        
+        // Semester toggle
+        if (e.target.closest('.toggle-semester')) {
+            const btn = e.target.closest('.toggle-semester');
+            const semester = btn.dataset.semester;
+            const semesterSection = btn.closest('.semester-section');
+            
+            semesterSection.classList.toggle('collapsed');
+            btn.classList.toggle('collapsed');
+        }
+    });
+    
+    // Expand all button
+    const expandAllCheckbox = document.getElementById('expandAll');
+    if (expandAllCheckbox) {
+        expandAllCheckbox.addEventListener('change', function() {
+            const yearSections = document.querySelectorAll('.year-level-section');
+            const semesterSections = document.querySelectorAll('.semester-section');
+            
+            if (this.checked) {
+                yearSections.forEach(section => section.classList.remove('collapsed'));
+                semesterSections.forEach(section => section.classList.remove('collapsed'));
+                document.querySelectorAll('.toggle-year, .toggle-semester').forEach(btn => {
+                    btn.classList.remove('collapsed');
+                });
+            } else {
+                yearSections.forEach(section => section.classList.add('collapsed'));
+                semesterSections.forEach(section => section.classList.add('collapsed'));
+                document.querySelectorAll('.toggle-year, .toggle-semester').forEach(btn => {
+                    btn.classList.add('collapsed');
+                });
+            }
+        });
+    }
+    
+    // Select all visible button
+    const selectAllVisibleBtn = document.getElementById('selectAllVisible');
+    if (selectAllVisibleBtn) {
+        selectAllVisibleBtn.addEventListener('click', function() {
+            const visibleSubjects = document.querySelectorAll('.subject-row:not(.hidden)');
+            let addedCount = 0;
+            
+            visibleSubjects.forEach(row => {
+                const subjectId = row.dataset.subjectId;
+                const checkbox = row.querySelector('.subject-checkbox');
+                
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('change'));
+                    addedCount++;
+                }
+            });
+            
+            if (addedCount > 0) {
+                showToast(`Added ${addedCount} subjects`);
+            }
+        });
+    }
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        `;
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (document.getElementById(toastId)) {
+            document.getElementById(toastId).remove();
+        }
+    }, 3000);
+}
+
         // 
         function handleEnrollment() {
             // Initialize variables
@@ -192,10 +579,81 @@
                 const enrollmentModal = new bootstrap.Modal(document.getElementById('enrollmentModal'));
                 enrollmentModal.show();
                 
-                // Initialize search functionality
+                // Initialize only for table view (default)
                 initSearch();
                 initFilters();
+                initSectionToggles();
+                initCardViewHandlers(); // For card view
+                initQuickAdd();
+                handleSubjectSelection(); // For table view
+                handleGradeSelection(); // For table view
+                handleUndoButton(); // For table view
+                handleSubmission();
             }
+
+            // Initialize card view handlers
+            function initCardViewHandlers() {
+                // Card view checkbox selection
+                document.addEventListener('change', function(e) {
+                    if (e.target.classList.contains('subject-checkbox-card')) {
+                        const subjectId = e.target.dataset.subjectId;
+                        const card = e.target.closest('.subject-card');
+                        const gradeSelect = card?.querySelector('.grade-select-card');
+                        const undoBtn = card?.querySelector('.undo-btn-card');
+                        
+                        if (e.target.checked) {
+                            // Show grade selection
+                            card.classList.add('selected');
+                            if (gradeSelect) gradeSelect.style.display = 'block';
+                            if (undoBtn) undoBtn.style.display = 'block';
+                            
+                            // Auto-select default grade
+                            if (gradeSelect && gradeSelect.value === '') {
+                                gradeSelect.value = '3.0';
+                                updateSelectedSubject(subjectId, gradeSelect.value);
+                            } else if (gradeSelect && gradeSelect.value) {
+                                updateSelectedSubject(subjectId, gradeSelect.value);
+                            }
+                        } else {
+                            // Hide grade selection and remove subject
+                            card.classList.remove('selected');
+                            if (gradeSelect) {
+                                gradeSelect.style.display = 'none';
+                                gradeSelect.value = '';
+                            }
+                            if (undoBtn) undoBtn.style.display = 'none';
+                            removeSelectedSubject(subjectId);
+                        }
+                        
+                        updateSummary();
+                    }
+                    
+                    // Card view grade selection
+                    if (e.target.classList.contains('grade-select-card') && e.target.value) {
+                        const subjectId = e.target.dataset.subjectId;
+                        const checkbox = document.querySelector(`#subject_card_${subjectId}`);
+                        
+                        if (checkbox && checkbox.checked) {
+                            updateSelectedSubject(subjectId, e.target.value);
+                            updateSummary();
+                        }
+                    }
+                });
+                
+                // Card view undo button
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.undo-btn-card')) {
+                        const subjectId = e.target.closest('.undo-btn-card').dataset.subjectId;
+                        const checkbox = document.querySelector(`#subject_card_${subjectId}`);
+                        
+                        if (checkbox) {
+                            checkbox.checked = false;
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+            }
+
             
             // Initialize search functionality - FIXED
             function initSearch() {
@@ -640,12 +1098,12 @@
                         if (result.success) {
                             // Show success message
                             const successMessage = `
-        ✅ Successfully enrolled ${result.enrollment_count} subjects!
+                                ✅ Successfully enrolled ${result.enrollment_count} subjects!
 
-        • Final GWA: ${result.gwa}
-        • Status: Officially Enrolled
+                                • Final GWA: ${result.gwa}
+                                • Status: Officially Enrolled
 
-        The page will refresh in a moment...
+                                The page will refresh in a moment...
                             `.trim();
                             
                             alert(successMessage);
@@ -672,14 +1130,10 @@
             function init() {
                 // Check if modal should be shown
                 if (document.getElementById('enrollmentModal')) {
-                    // Don't auto-show immediately, let user see dashboard first
                     setTimeout(showEnrollmentModal, 1500);
                     
-                    // Initialize event listeners
-                    handleSubjectSelection();
-                    handleGradeSelection();
-                    handleUndoButton();
-                    handleSubmission();
+                    // Initialize view toggle
+                    initViewToggle();
                 }
             }
             

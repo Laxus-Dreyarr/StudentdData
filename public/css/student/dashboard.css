@@ -966,6 +966,174 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 8px;
 }
 
+/* Dropdown View Styles */
+#dropdownView .accordion-button {
+    background-color: #e3f2fd;
+    font-weight: bold;
+}
+
+#dropdownView .accordion-button:not(.collapsed) {
+    background-color: #2196f3;
+    color: white;
+}
+
+.subject-card {
+    border: 1px solid #dee2e6;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.subject-card:hover {
+    border-color: #2196f3;
+    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.1);
+}
+
+.subject-card.selected {
+    border-color: #4caf50;
+    background-color: #e8f5e9;
+}
+
+.subject-card .card-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.subject-card .card-text {
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.grade-selection {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Quick Add Styles */
+#quickSubjectSelect option {
+    padding: 8px;
+}
+
+#quickSubjectSelect option:hover {
+    background-color: #f0f0f0;
+}
+
+/* Toggle buttons */
+.toggle-year, .toggle-semester {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* View toggle buttons */
+#tableViewBtn.active, #dropdownViewBtn.active {
+    background-color: #2196f3;
+    color: white;
+}
+
+/* View Toggle Buttons */
+.btn-group .btn {
+    border-radius: 5px !important;
+}
+
+.btn-group .btn.active {
+    background-color: #2196f3;
+    color: white;
+    border-color: #2196f3;
+}
+
+/* Subject Views */
+.subject-view {
+    transition: opacity 0.3s ease;
+}
+
+/* Card View Styles */
+.subject-card {
+    border: 1px solid #dee2e6;
+    transition: all 0.3s;
+    cursor: pointer;
+    min-height: 160px;
+}
+
+.subject-card:hover {
+    border-color: #2196f3;
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.1);
+    transform: translateY(-2px);
+}
+
+.subject-card.selected {
+    border-color: #4caf50;
+    background-color: #f8fff8;
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.1);
+}
+
+.subject-card .card-title {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #2196f3;
+}
+
+.subject-card .card-text {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+/* Accordion Styles */
+.accordion-button {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #e3f2fd;
+    color: #2196f3;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: #2196f3;
+}
+
+/* Quick Add Card */
+#quickAddCard {
+    border: 2px dashed #2196f3;
+}
+
+/* Summary Cards */
+.selected-subjects-summary .alert {
+    border-radius: 8px;
+    border: none;
+    padding: 15px;
+}
+
+.selected-subjects-summary .alert h4 {
+    font-weight: bold;
+}
+
+/* Progress bar adjustments */
+.progress-bar {
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1076,6 +1244,32 @@ h1, h2, h3, h4, h5, h6 {
     .grade-select {
         min-width: 80px;
     }
+
+    .subject-card {
+        margin-bottom: 10px;
+    }
+    
+    #quickYearSelect, #quickSemesterSelect, #quickSubjectSelect {
+        font-size: 0.9rem;
+    }
+
+    .subject-card {
+        margin-bottom: 15px;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+        min-width: 120px;
+        margin-bottom: 5px;
+    }
+    
+    .selected-subjects-summary .row > div {
+        margin-bottom: 10px;
+    }
 }
 
 @media (max-width: 576px) {
@@ -1095,6 +1289,40 @@ h1, h2, h3, h4, h5, h6 {
     .dashboard-card {
         padding: 20px;
     }
+}
+
+#selectedSubjectsList .subject-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+#selectedSubjectsList .subject-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+#selectedSubjectsList .subject-item:hover {
+    background-color: #f0f0f0;
+}
+
+/* Year/Semester collapse indicators */
+.year-level-section.collapsed .semester-section {
+    display: none;
+}
+
+.semester-section.collapsed table {
+    display: none;
+}
+
+.toggle-year i, .toggle-semester i {
+    transition: transform 0.3s;
+}
+
+.toggle-year.collapsed i, .toggle-semester.collapsed i {
+    transform: rotate(-90deg);
 }
 
 /* Loading state for search */
