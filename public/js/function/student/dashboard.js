@@ -179,6 +179,267 @@
                 window.location.href = '/';
             }
         }
+
+
+        function handleEnrollment() {
+            // Initialize variables
+            let selectedSubjects = new Map();
+            const studentId = document.querySelector('meta[name="student-id"]')?.content || 
+                            document.getElementById('studentId')?.value;
+            
+            // Show modal if student hasn't enrolled yet
+            function showEnrollmentModal() {
+                const enrollmentModal = new bootstrap.Modal(document.getElementById('enrollmentModal'));
+                enrollmentModal.show();
+            }
+            
+            // Handle subject selection
+            function handleSubjectSelection() {
+                document.addEventListener('change', function(e) {
+                    if (e.target.classList.contains('subject-checkbox')) {
+                        const subjectId = e.target.dataset.subjectId;
+                        const subjectRow = e.target.closest('.subject-row');
+                        const gradeSelect = subjectRow.querySelector('.grade-select');
+                        const undoBtn = subjectRow.querySelector('.undo-btn');
+                        
+                        if (e.target.checked) {
+                            // Enable grade selection
+                            gradeSelect.disabled = false;
+                            subjectRow.classList.add('selected');
+                            undoBtn.style.display = 'block';
+                            
+                            // Auto-select first grade option
+                            if (gradeSelect.value === '') {
+                                gradeSelect.value = '3.00'; // Default grade
+                                updateSelectedSubject(subjectId, gradeSelect.value);
+                            }
+                        } else {
+                            // Disable grade selection and remove selection
+                            gradeSelect.disabled = true;
+                            gradeSelect.value = '';
+                            subjectRow.classList.remove('selected');
+                            undoBtn.style.display = 'none';
+                            removeSelectedSubject(subjectId);
+                        }
+                        
+                        updateSummary();
+                    }
+                });
+            }
+            
+            // Handle grade selection
+            function handleGradeSelection() {
+                document.addEventListener('change', function(e) {
+                    if (e.target.classList.contains('grade-select') && e.target.value) {
+                        const subjectId = e.target.dataset.subjectId;
+                        updateSelectedSubject(subjectId, e.target.value);
+                        updateSummary();
+                    }
+                });
+            }
+            
+            // Handle undo button
+            function handleUndoButton() {
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.undo-btn')) {
+                        const subjectId = e.target.closest('.undo-btn').dataset.subjectId;
+                        const checkbox = document.querySelector(`.subject-checkbox[data-subject-id="${subjectId}"]`);
+                        
+                        if (checkbox) {
+                            checkbox.checked = false;
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+            }
+            
+            // Update selected subject in map
+            function updateSelectedSubject(subjectId, grade) {
+                const subjectRow = document.querySelector(`.subject-row[data-subject-id="${subjectId}"]`);
+                const subjectCode = subjectRow?.querySelector('td:nth-child(2)')?.textContent;
+                const subjectName = subjectRow?.querySelector('td:nth-child(3)')?.textContent;
+                const units = parseInt(subjectRow?.querySelector('.subject-checkbox')?.dataset.units) || 3;
+                
+                selectedSubjects.set(subjectId, {
+                    id: subjectId,
+                    code: subjectCode,
+                    name: subjectName,
+                    grade: grade,
+                    units: units,
+                    numericGrade: convertGradeToNumeric(grade)
+                });
+            }
+            
+            // Remove selected subject from map
+            function removeSelectedSubject(subjectId) {
+                selectedSubjects.delete(subjectId);
+            }
+            
+            // Convert letter grade to numeric
+            function convertGradeToNumeric(grade) {
+                const gradeMap = {
+                    '1.00': 1.00, '1.25': 1.25, '1.50': 1.50, '1.75': 1.75,
+                    '2.00': 2.00, '2.25': 2.25, '2.50': 2.50, '2.75': 2.75,
+                    '3.00': 3.00, '4.00': 4.00, '5.00': 5.00,
+                    'INC': 0, 'DRP': 0, 'PASS': 1.00, 'FAIL': 5.00
+                };
+                return gradeMap[grade] || 0;
+            }
+            
+            // Update summary display
+            function updateSummary() {
+                const selectedSubjectsList = document.getElementById('selectedSubjectsList');
+                const totalSubjectsCount = document.getElementById('totalSubjectsCount');
+                const gwaPreview = document.getElementById('gwaPreview');
+                const submitBtn = document.getElementById('submitEnrollment');
+                
+                // Update count
+                totalSubjectsCount.textContent = selectedSubjects.size;
+                
+                // Update list
+                if (selectedSubjects.size === 0) {
+                    selectedSubjectsList.innerHTML = '<p class="text-muted">No subjects selected yet.</p>';
+                    gwaPreview.textContent = '0.00';
+                    submitBtn.disabled = true;
+                    return;
+                }
+                
+                // Build subjects list
+                let listHTML = '';
+                let totalGradePoints = 0;
+                let totalUnits = 0;
+                
+                selectedSubjects.forEach(subject => {
+                    listHTML += `
+                        <div class="subject-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${subject.code}</strong>: ${subject.name}
+                                <span class="badge bg-secondary ms-2">${subject.units} units</span>
+                            </div>
+                            <div>
+                                <span class="badge ${getGradeBadgeClass(subject.grade)}">
+                                    Grade: ${subject.grade}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Calculate for GWA
+                    totalGradePoints += (subject.numericGrade * subject.units);
+                    totalUnits += subject.units;
+                });
+                
+                selectedSubjectsList.innerHTML = listHTML;
+                
+                // Calculate and display GWA
+                const gwa = totalUnits > 0 ? totalGradePoints / totalUnits : 0;
+                gwaPreview.textContent = gwa.toFixed(2);
+                
+                // Enable submit button if at least one subject selected
+                submitBtn.disabled = selectedSubjects.size === 0;
+            }
+            
+            // Get badge class based on grade
+            function getGradeBadgeClass(grade) {
+                const numericGrade = convertGradeToNumeric(grade);
+                if (numericGrade <= 1.75) return 'bg-success';
+                if (numericGrade <= 2.75) return 'bg-warning text-dark';
+                return 'bg-danger';
+            }
+            
+            // Handle form submission
+            function handleSubmission() {
+                document.getElementById('submitEnrollment').addEventListener('click', async function() {
+                    if (selectedSubjects.size === 0) {
+                        alert('Please select at least one subject.');
+                        return;
+                    }
+                    
+                    // Confirm submission
+                    if (!confirm(`You are about to submit ${selectedSubjects.size} subjects. This action cannot be undone. Proceed?`)) {
+                        return;
+                    }
+                    
+                    const submitBtn = this;
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                    
+                    try {
+                        // Prepare data
+                        const enrollmentData = Array.from(selectedSubjects.values()).map(subject => ({
+                            subject_id: subject.id,
+                            grade: subject.grade
+                        }));
+                        
+                        // Send request
+                        const response = await fetch('/student/enroll-subjects', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                student_id: studentId,
+                                enrolled_subjects: enrollmentData
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            // Show success message
+                            alert(`Successfully enrolled ${result.enrollment_count} subjects! Your GWA is ${result.gwa}.`);
+                            
+                            // Close modal and reload page
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('enrollmentModal'));
+                            modal.hide();
+                            
+                            // Reload page to show updated dashboard
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            throw new Error(result.message || 'Submission failed');
+                        }
+                        
+                    } catch (error) {
+                        alert('Error: ' + error.message);
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                });
+            }
+            
+            // Initialize all event listeners
+            function init() {
+                // Check if modal should be shown
+                if (document.getElementById('enrollmentModal')) {
+                    setTimeout(showEnrollmentModal, 1000); // Show after 1 second
+                    
+                    // Initialize event listeners
+                    handleSubjectSelection();
+                    handleGradeSelection();
+                    handleUndoButton();
+                    handleSubmission();
+                }
+            }
+            
+            // Public methods
+            return {
+                init: init,
+                getSelectedSubjects: () => selectedSubjects,
+                calculateGWA: () => {
+                    let totalGradePoints = 0;
+                    let totalUnits = 0;
+                    
+                    selectedSubjects.forEach(subject => {
+                        totalGradePoints += (subject.numericGrade * subject.units);
+                        totalUnits += subject.units;
+                    });
+                    
+                    return totalUnits > 0 ? totalGradePoints / totalUnits : 0;
+                }
+            };
+        }
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -189,6 +450,9 @@
             
             // Update class status every minute
             setInterval(updateClassStatus, 60000);
+
+            const enrollment = handleEnrollment();
+            enrollment.init();
             
             // Notification button click
             document.querySelector('.notification-btn').addEventListener('click', function() {

@@ -925,6 +925,144 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 </div>
             </section>
         </main>
+
+        @if(!$hasEnrolledSubjects && !empty($availableSubjects))
+        <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="enrollmentModalLabel">Enroll Subjects</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-4">Please select the subjects you have already accomplished and provide your grades.</p>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Select subjects by checking the box, then choose your grade from the dropdown.
+                        </div>
+                        
+                        <div id="subjectSelectionContainer">
+                            @foreach($availableSubjects as $yearLevel => $semesters)
+                                <div class="year-level-section mb-5">
+                                    <h4 class="year-level-header">{{ $yearLevel }}</h4>
+                                    
+                                    @foreach($semesters as $semester => $subjects)
+                                        <div class="semester-section mb-4">
+                                            <h5 class="semester-header">{{ $semester }}</h5>
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th width="50">Select</th>
+                                                            <th width="100">Code</th>
+                                                            <th>Subject Name</th>
+                                                            <th width="80">Units</th>
+                                                            <th width="120">Grade</th>
+                                                            <th width="100">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($subjects as $subject)
+                                                        <tr data-subject-id="{{ $subject->id }}" class="subject-row">
+                                                            <td class="text-center">
+                                                                <input type="checkbox" class="form-check-input subject-checkbox" 
+                                                                    data-subject-id="{{ $subject->id }}"
+                                                                    data-units="{{ $subject->units ?? 3 }}"
+                                                                    id="subject_{{ $subject->id }}">
+                                                            </td>
+                                                            <td>{{ $subject->code }}</td>
+                                                            <td>{{ $subject->name }}</td>
+                                                            <td class="text-center">{{ $subject->units ?? 3 }}</td>
+                                                            <td>
+                                                                <select class="form-select form-select-sm grade-select" 
+                                                                        data-subject-id="{{ $subject->id }}" 
+                                                                        disabled>
+                                                                    <option value="">-- Select --</option>
+                                                                    <!-- Passing Grades -->
+                                                                    <option value="1.0">1.0</option>
+                                                                    <option value="1.1">1.1</option>
+                                                                    <option value="1.2">1.2</option>
+                                                                    <option value="1.3">1.3</option>
+                                                                    <option value="1.4">1.4</option>
+                                                                    <option value="1.5">1.5</option>
+                                                                    <option value="1.6">1.6</option>
+                                                                    <option value="1.7">1.7</option>
+                                                                    <option value="1.8">1.8</option>
+                                                                    <option value="1.9">1.9</option>
+                                                                    <option value="2.0">2.0</option>
+                                                                    <option value="2.1">2.1</option>
+                                                                    <option value="2.2">2.2</option>
+                                                                    <option value="2.3">2.3</option>
+                                                                    <option value="2.4">2.4</option>
+                                                                    <option value="2.5">2.5</option>
+                                                                    <option value="2.6">2.6</option>
+                                                                    <option value="2.7">2.7</option>
+                                                                    <option value="2.8">2.8</option>
+                                                                    <option value="2.9">2.9</option>
+                                                                    <option value="3.0">3.0</option>
+
+                                                                    <!-- Failing & Special Grades -->
+                                                                    <option value="4.0">4.0</option>
+                                                                    <option value="5.0">5.0</option>
+                                                                    <option value="INC">INC</option>
+                                                                    <option value="DRP">DRP</option>
+                                                                    <option value="PASS">PASS</option>
+                                                                    <option value="FAIL">FAIL</option>
+
+                                                                </select>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary undo-btn" 
+                                                                        data-subject-id="{{ $subject->id }}"
+                                                                        style="display: none;">
+                                                                    <i class="fas fa-undo"></i> Undo
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        </div>
+                        
+                        <div class="selected-subjects-summary mb-4">
+                            <h5>Selected Subjects Summary</h5>
+                            <div id="selectedSubjectsList" class="mb-3">
+                                <p class="text-muted">No subjects selected yet.</p>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="alert alert-secondary">
+                                        <strong>Total Selected Subjects:</strong> <span id="totalSubjectsCount">0</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-primary">
+                                        <strong>GWA (Preliminary):</strong> <span id="gwaPreview">0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            Please review your selections before submitting. This action cannot be undone.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="submitEnrollment" disabled>
+                            <i class="fas fa-check"></i> Submit Enrollment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     <!-- Footer -->
