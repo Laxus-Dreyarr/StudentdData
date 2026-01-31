@@ -456,26 +456,32 @@ class StudentController extends Controller
             ], 401);
         }
 
+        // LOG THE USER INTO THE SESSION
+        Auth::guard('student')->login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
         // Update last login
         $user->last_login = Carbon::now();
         $user->save();
 
-        // Log the user in
-        Auth::guard('student')->login($user, $request->has('remember'));
-
         // Prepare response data
+        // $responseData = [
+        //     'success' => true,
+        //     'message' => 'Login successful!',
+        //     'redirect' => '/dashboard', // Change this to your dashboard route
+        //     'user' => [
+        //         'id' => $user->id,
+        //         'email' => $user->email2,
+        //         'type' => $user->user_type,
+        //         'profile' => $user->profile,
+        //         'student_info' => $user->user_information
+        //     ]
+        // ];
         $responseData = [
             'success' => true,
-            'message' => 'Login successful!',
-            'redirect' => '/dashboard', // Change this to your dashboard route
-            'user' => [
-                'id' => $user->id,
-                'email' => $user->email2,
-                'type' => $user->user_type,
-                'profile' => $user->profile,
-                'student_info' => $user->user_information
-            ]
+            'message' => 'Login successful!'
         ];
+
 
         return response()->json($responseData);
     }
@@ -494,6 +500,41 @@ class StudentController extends Controller
             'success' => true,
             'message' => 'Logged out successfully'
         ]);
+    }
+
+    public function dashboard(Request $request)
+    {
+        if (!Auth::guard('student')->check()) {
+            return redirect('/')->with('error', 'Please login first.');
+        }
+
+        $user = Auth::guard('student')->user();
+
+        // Get current date for SY and SEM calculation
+        $currentYear = date('Y');
+        $currentMonth = date('n'); // 1-12
+        
+        // Calculate School Year and Semester
+        if ($currentMonth >= 7 && $currentMonth <= 12) {
+            // July to December: First Semester of current school year
+            $schoolYear = $currentYear . '-' . ($currentYear + 1);
+            $semester = 'SEM 1';
+        } else {
+            // January to June: Second Semester of previous school year
+            $schoolYear = ($currentYear - 1) . '-' . $currentYear;
+            $semester = 'SEM 2';
+        }
+        
+        $pageTitle = "SY: $schoolYear $semester";
+
+        $sem = $semester;
+
+        return view('student.dashboard', compact(
+            'user', 
+            'pageTitle',
+            'sem'
+        ));
+
     }
 
     /**

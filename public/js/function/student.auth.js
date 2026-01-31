@@ -65,15 +65,16 @@ class AuthHandler {
             if (data.success) {
                 // Show success message
                 this.showMessage('success', data.message);
-                
-                // Redirect to dashboard after short delay
+                window.location.href = '/student-dashboard';
                 
             } else {
+                window.location.href = '/';
                 // Show error message
                 this.showMessage('error', data.message || 'Login failed');
                 this.setLoading(false);
             }
         } catch (error) {
+            window.location.href = '/';
             console.error('Login error:', error);
             this.showMessage('error', 'Network error. Please try again.');
             this.setLoading(false);
