@@ -602,8 +602,8 @@ class StudentController extends Controller
             $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
             
             if ($curriculum) {
-                // Get subjects for this curriculum, ordered by year level and semester
-                $availableSubjects = Subject::where('curriculum_id', $curriculum->id)
+                // Get all subjects for this curriculum (for search functionality)
+                $allSubjects = Subject::where('curriculum_id', $curriculum->id)
                     ->where('is_active', 1)
                     ->orderByRaw("
                         CASE year_level 
@@ -622,8 +622,10 @@ class StudentController extends Controller
                         END,
                         code
                     ")
-                    ->get()
-                    ->groupBy(['year_level', 'semester']);
+                    ->get();
+                
+                // Group subjects for display
+                $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
             }
         }
 
@@ -643,11 +645,14 @@ class StudentController extends Controller
     public function enrollSubjects(Request $request)
     {
         try {
-            $studentId = $request->input('student_id');
+            $user = Auth::guard('student')->user();
+            $student = $user->user_information->student;
+            $studentID = $student->id;
+            // $studentId = $request->input('student_id');
             $enrolledSubjects = $request->input('enrolled_subjects');
             
             // Validate student exists
-            $student = Student::where('id', $studentId)->first();
+            $student = Student::where('id', $studentID)->first();
             if (!$student) {
                 return response()->json([
                     'success' => false,
@@ -684,7 +689,7 @@ class StudentController extends Controller
                 
                 // Save to enrolled_subjects table
                 EnrolledSubjects::create([
-                    'student_id' => $studentId,
+                    'student_id' => $studentID,
                     'subject_id' => $subject['subject_id'],
                     'grade' => $subject['grade']
                 ]);
@@ -727,59 +732,22 @@ class StudentController extends Controller
     // Helper method to convert letter grades to numeric
     private function convertGradeToNumeric($grade)
     {
-        // $gradeMap = [
-        //     '1.00' => 1.00,
-        //     '1.25' => 1.25,
-        //     '1.50' => 1.50,
-        //     '1.75' => 1.75,
-        //     '2.00' => 2.00,
-        //     '2.25' => 2.25,
-        //     '2.50' => 2.50,
-        //     '2.75' => 2.75,
-        //     '3.00' => 3.00,
-        //     '4.00' => 4.00,
-        //     '5.00' => 5.00,
-        //     'INC' => 0,
-        //     'DRP' => 0,
-        //     'PASS' => 1.00,
-        //     'FAIL' => 5.00
-        // ];
-
         $gradeMap = [
             // Passing Grades
-            '1.0' => 1.0,
-            '1.1' => 1.1,
-            '1.2' => 1.2,
-            '1.3' => 1.3,
-            '1.4' => 1.4,
-            '1.5' => 1.5,
-            '1.6' => 1.6,
-            '1.7' => 1.7,
-            '1.8' => 1.8,
-            '1.9' => 1.9,
-            '2.0' => 2.0,
-            '2.1' => 2.1,
-            '2.2' => 2.2,
-            '2.3' => 2.3,
-            '2.4' => 2.4,
-            '2.5' => 2.5,
-            '2.6' => 2.6,
-            '2.7' => 2.7,
-            '2.8' => 2.8,
-            '2.9' => 2.9,
+            '1.0' => 1.0, '1.1' => 1.1, '1.2' => 1.2, '1.3' => 1.3, '1.4' => 1.4,
+            '1.5' => 1.5, '1.6' => 1.6, '1.7' => 1.7, '1.8' => 1.8, '1.9' => 1.9,
+            '2.0' => 2.0, '2.1' => 2.1, '2.2' => 2.2, '2.3' => 2.3, '2.4' => 2.4,
+            '2.5' => 2.5, '2.6' => 2.6, '2.7' => 2.7, '2.8' => 2.8, '2.9' => 2.9,
             '3.0' => 3.0,
 
             // Failing and Special Grades
-            '4.0' => 4.0,
-            '5.0' => 5.0,
-            'INC' => 0.0,
-            'DRP' => 0.0,
+            '4.0' => 4.0, '5.0' => 5.0,
+            'INC' => 0.0, 'DRP' => 0.0,
             
             // Original descriptive mappings
-            'PASS' => 1.0,
-            'FAIL' => 5.0,
+            'PASS' => 1.0, 'FAIL' => 5.0,
         ];
-
+        
         return $gradeMap[$grade] ?? 0;
     }
 

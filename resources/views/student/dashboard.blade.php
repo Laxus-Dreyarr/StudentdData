@@ -8,6 +8,8 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
     <title>EVSU Ormoc - Student Dashboard</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -941,6 +943,35 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             <i class="fas fa-info-circle"></i> Select subjects by checking the box, then choose your grade from the dropdown.
                         </div>
                         
+                        {{-- Search Bar --}}
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="subjectSearch" 
+                                        placeholder="Search by subject code or name...">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Type to filter subjects by code or name</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="showSelectedOnly">
+                                    <label class="form-check-label" for="showSelectedOnly">
+                                        Show selected subjects only
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="hideCompleted">
+                                    <label class="form-check-label" for="hideCompleted">
+                                        Hide already selected subjects
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div id="subjectSelectionContainer">
                             @foreach($availableSubjects as $yearLevel => $semesters)
                                 <div class="year-level-section mb-5">
@@ -950,7 +981,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                         <div class="semester-section mb-4">
                                             <h5 class="semester-header">{{ $semester }}</h5>
                                             <div class="table-responsive">
-                                                <table class="table table-bordered table-hover">
+                                                <table class="table table-bordered table-hover subject-table">
                                                     <thead>
                                                         <tr>
                                                             <th width="50">Select</th>
@@ -963,52 +994,38 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                     </thead>
                                                     <tbody>
                                                         @foreach($subjects as $subject)
-                                                        <tr data-subject-id="{{ $subject->id }}" class="subject-row">
+                                                        <tr data-subject-id="{{ $subject->id }}" 
+                                                            data-code="{{ strtoupper($subject->code) }}"
+                                                            data-name="{{ strtoupper($subject->name) }}"
+                                                            class="subject-row">
                                                             <td class="text-center">
                                                                 <input type="checkbox" class="form-check-input subject-checkbox" 
                                                                     data-subject-id="{{ $subject->id }}"
                                                                     data-units="{{ $subject->units ?? 3 }}"
                                                                     id="subject_{{ $subject->id }}">
                                                             </td>
-                                                            <td>{{ $subject->code }}</td>
-                                                            <td>{{ $subject->name }}</td>
+                                                            <td class="subject-code">{{ $subject->code }}</td>
+                                                            <td class="subject-name">{{ $subject->name }}</td>
                                                             <td class="text-center">{{ $subject->units ?? 3 }}</td>
                                                             <td>
                                                                 <select class="form-select form-select-sm grade-select" 
                                                                         data-subject-id="{{ $subject->id }}" 
                                                                         disabled>
                                                                     <option value="">-- Select --</option>
-                                                                    <!-- Passing Grades -->
-                                                                    <option value="1.0">1.0</option>
-                                                                    <option value="1.1">1.1</option>
-                                                                    <option value="1.2">1.2</option>
-                                                                    <option value="1.3">1.3</option>
-                                                                    <option value="1.4">1.4</option>
-                                                                    <option value="1.5">1.5</option>
-                                                                    <option value="1.6">1.6</option>
-                                                                    <option value="1.7">1.7</option>
-                                                                    <option value="1.8">1.8</option>
-                                                                    <option value="1.9">1.9</option>
-                                                                    <option value="2.0">2.0</option>
-                                                                    <option value="2.1">2.1</option>
-                                                                    <option value="2.2">2.2</option>
-                                                                    <option value="2.3">2.3</option>
-                                                                    <option value="2.4">2.4</option>
-                                                                    <option value="2.5">2.5</option>
-                                                                    <option value="2.6">2.6</option>
-                                                                    <option value="2.7">2.7</option>
-                                                                    <option value="2.8">2.8</option>
-                                                                    <option value="2.9">2.9</option>
-                                                                    <option value="3.0">3.0</option>
-
-                                                                    <!-- Failing & Special Grades -->
+                                                                    {{-- Generate grades from 1.0 to 3.0 --}}
+                                                                    @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                                        @php
+                                                                            $grade = number_format($i, 1);
+                                                                            $gradeLabel = $grade;
+                                                                        @endphp
+                                                                        <option value="{{ $grade }}">{{ $gradeLabel }}</option>
+                                                                    @endfor
                                                                     <option value="4.0">4.0</option>
                                                                     <option value="5.0">5.0</option>
                                                                     <option value="INC">INC</option>
                                                                     <option value="DRP">DRP</option>
                                                                     <option value="PASS">PASS</option>
                                                                     <option value="FAIL">FAIL</option>
-
                                                                 </select>
                                                             </td>
                                                             <td class="text-center">
@@ -1029,20 +1046,59 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             @endforeach
                         </div>
                         
+                        {{-- GWA Calculation Information --}}
+                        <div class="alert alert-primary">
+                            <h6><i class="fas fa-calculator"></i> GWA (General Weighted Average) Calculation</h6>
+                            <small>
+                                GWA is calculated by: <strong>(Sum of (Grade × Units)) ÷ Total Units</strong><br>
+                                Passing Grades: 1.0 to 3.0 | Failing Grades: 4.0 to 5.0<br>
+                                <strong>Note:</strong> INC and DRP are counted as 0.0 and will affect your GWA
+                            </small>
+                        </div>
+                        
+                        {{-- Selected Subjects Summary --}}
                         <div class="selected-subjects-summary mb-4">
                             <h5>Selected Subjects Summary</h5>
                             <div id="selectedSubjectsList" class="mb-3">
                                 <p class="text-muted">No subjects selected yet.</p>
                             </div>
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="alert alert-secondary">
                                         <strong>Total Selected Subjects:</strong> <span id="totalSubjectsCount">0</span>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
+                                    <div class="alert alert-info">
+                                        <strong>Total Units:</strong> <span id="totalUnitsCount">0</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
                                     <div class="alert alert-primary">
                                         <strong>GWA (Preliminary):</strong> <span id="gwaPreview">0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {{-- Grade Distribution --}}
+                            <div class="mt-3">
+                                <h6>Grade Distribution</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-success" id="passingGradeBar" style="width: 0%"></div>
+                                            <div class="progress-bar bg-warning" id="conditionalGradeBar" style="width: 0%"></div>
+                                            <div class="progress-bar bg-danger" id="failingGradeBar" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted">
+                                            <span class="badge bg-success">1.0-1.5</span>
+                                            <span class="badge bg-warning">1.6-3.0</span>
+                                            <span class="badge bg-danger">4.0-5.0/FAIL</span>
+                                            <span class="badge bg-secondary">INC/DRP</span>
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div id="gradeDistribution"></div>
                                     </div>
                                 </div>
                             </div>

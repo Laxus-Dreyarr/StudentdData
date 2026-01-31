@@ -930,6 +930,42 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 500;
 }
 
+#subjectSearch {
+    border-radius: 5px;
+}
+
+/* Subject filtering styles */
+.subject-row.hidden {
+    display: none;
+}
+
+.subject-row.highlight {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+/* Progress bar for grade distribution */
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.5s ease-in-out;
+}
+
+/* Grade badges */
+.grade-badge {
+    font-size: 0.75em;
+    padding: 0.25em 0.5em;
+}
+
+/* Summary cards */
+.selected-subjects-summary .alert {
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1026,6 +1062,20 @@ h1, h2, h3, h4, h5, h6 {
     .courses-grid {
         grid-template-columns: 1fr;
     }
+
+    .year-level-header, .semester-header {
+        font-size: 1.1em;
+        padding: 8px;
+    }
+    
+    .subject-table th, .subject-table td {
+        padding: 8px 5px;
+        font-size: 0.9em;
+    }
+    
+    .grade-select {
+        min-width: 80px;
+    }
 }
 
 @media (max-width: 576px) {
@@ -1045,6 +1095,30 @@ h1, h2, h3, h4, h5, h6 {
     .dashboard-card {
         padding: 20px;
     }
+}
+
+/* Loading state for search */
+.search-loading {
+    position: relative;
+}
+
+.search-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* Footer */
