@@ -86,13 +86,13 @@
                             <span>My Profile</span>
                         </a>
                     </div>
-                    <div class="nav-item">
+                    <!-- <div class="nav-item">
                         <a class="nav-link" data-section="schedule">
                             <i class="fas fa-calendar-alt nav-icon"></i>
                             <span>Schedule</span>
                             <span class="nav-badge">New</span>
                         </a>
-                    </div>
+                    </div> -->
                 </div>
                 
                 <div class="nav-section">
@@ -109,22 +109,22 @@
                             <span>Grades</span>
                         </a>
                     </div>
-                    <div class="nav-item">
+                    <!-- <div class="nav-item">
                         <a class="nav-link" data-section="assignments">
                             <i class="fas fa-tasks nav-icon"></i>
                             <span>Assignments</span>
                             <span class="nav-badge">5</span>
                         </a>
-                    </div>
-                    <div class="nav-item">
+                    </div> -->
+                    <!-- <div class="nav-item">
                         <a class="nav-link" data-section="exams">
                             <i class="fas fa-file-alt nav-icon"></i>
                             <span>Exams</span>
                         </a>
-                    </div>
+                    </div> -->
                 </div>
                 
-                <div class="nav-section">
+                <!-- <div class="nav-section">
                     <div class="nav-label">Resources</div>
                     <div class="nav-item">
                         <a class="nav-link" data-section="elibrary">
@@ -144,9 +144,9 @@
                             <span>Student Clubs</span>
                         </a>
                     </div>
-                </div>
+                </div> -->
                 
-                <div class="nav-section">
+                <!-- <div class="nav-section">
                     <div class="nav-label">Support</div>
                     <div class="nav-item">
                         <a class="nav-link" data-section="help">
@@ -160,7 +160,7 @@
                             <span>Settings</span>
                         </a>
                     </div>
-                </div>
+                </div> -->
             </div>
         </aside>
 
@@ -211,47 +211,42 @@
                 <!-- Dashboard Grid -->
                 <div class="dashboard-grid">
                     
+                    <!-- Campus Announcements -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-calendar-day"></i> Today's Schedule</h5>
+                            <h5 class="card-title"><i class="fas fa-bullhorn"></i> Campus Announcements</h5>
                             <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
                         </div>
                         
-                        <div class="timeline">
-                            <div class="timeline-item">
-                                <div class="time-badge">08:00 AM</div>
-                                <div class="class-details">
-                                    <div class="class-name">Web Development</div>
-                                    <div class="class-info">Room: IT-101 • Prof. Garcia</div>
+                        <div class="announcements-list">
+                            <div class="announcement-item">
+                                <div class="announcement-header">
+                                    <div class="announcement-title">Final Exam Schedule</div>
+                                    <div class="announcement-date">Today</div>
                                 </div>
-                                <div class="class-status status-current">Ongoing</div>
+                                <div class="announcement-content">
+                                    The final examination schedule for the 2nd semester is now available on the student portal.
+                                </div>
                             </div>
                             
-                            <div class="timeline-item">
-                                <div class="time-badge">10:30 AM</div>
-                                <div class="class-details">
-                                    <div class="class-name">Database Systems</div>
-                                    <div class="class-info">Room: CS Lab 2 • Prof. Santos</div>
+                            <div class="announcement-item">
+                                <div class="announcement-header">
+                                    <div class="announcement-title">Scholarship Applications</div>
+                                    <div class="announcement-date">2 days ago</div>
                                 </div>
-                                <div class="class-status status-upcoming">Up Next</div>
+                                <div class="announcement-content">
+                                    Applications for academic scholarships for next school year are now open until April 30.
+                                </div>
                             </div>
                             
-                            <div class="timeline-item">
-                                <div class="time-badge">01:00 PM</div>
-                                <div class="class-details">
-                                    <div class="class-name">Software Engineering</div>
-                                    <div class="class-info">Room: Main 304 • Prof. Reyes</div>
+                            <div class="announcement-item">
+                                <div class="announcement-header">
+                                    <div class="announcement-title">University Week</div>
+                                    <div class="announcement-date">5 days ago</div>
                                 </div>
-                                <div class="class-status status-upcoming">Later</div>
-                            </div>
-                            
-                            <div class="timeline-item">
-                                <div class="time-badge">03:30 PM</div>
-                                <div class="class-details">
-                                    <div class="class-name">Networking</div>
-                                    <div class="class-info">Room: Tech 202 • Prof. Lim</div>
+                                <div class="announcement-content">
+                                    Join us for EVSU Ormoc Campus University Week celebration from April 10-14, 2024.
                                 </div>
-                                <div class="class-status status-upcoming">Later</div>
                             </div>
                         </div>
                     </div>
@@ -310,7 +305,7 @@
                 <!-- Second Row -->
                 <div class="dashboard-grid">
                     <!-- Upcoming Assignments -->
-                    <div class="dashboard-card">
+                    <!-- <div class="dashboard-card">
                         <div class="card-header">
                             <h5 class="card-title"><i class="fas fa-tasks"></i> Upcoming Assignments</h5>
                             <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
@@ -350,51 +345,57 @@
                                 <div class="assignment-deadline">Due March 28</div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     
-                    <!-- Campus Announcements -->
-                    <div class="dashboard-card">
+                    <!-- Today's Schedule -->
+                    <!-- <div class="dashboard-card">
                         <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-bullhorn"></i> Campus Announcements</h5>
+                            <h5 class="card-title"><i class="fas fa-calendar-day"></i> Today's Schedule</h5>
                             <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
                         </div>
                         
-                        <div class="announcements-list">
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">Final Exam Schedule</div>
-                                    <div class="announcement-date">Today</div>
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="time-badge">08:00 AM</div>
+                                <div class="class-details">
+                                    <div class="class-name">Web Development</div>
+                                    <div class="class-info">Room: IT-101 • Prof. Garcia</div>
                                 </div>
-                                <div class="announcement-content">
-                                    The final examination schedule for the 2nd semester is now available on the student portal.
-                                </div>
+                                <div class="class-status status-current">Ongoing</div>
                             </div>
                             
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">Scholarship Applications</div>
-                                    <div class="announcement-date">2 days ago</div>
+                            <div class="timeline-item">
+                                <div class="time-badge">10:30 AM</div>
+                                <div class="class-details">
+                                    <div class="class-name">Database Systems</div>
+                                    <div class="class-info">Room: CS Lab 2 • Prof. Santos</div>
                                 </div>
-                                <div class="announcement-content">
-                                    Applications for academic scholarships for next school year are now open until April 30.
-                                </div>
+                                <div class="class-status status-upcoming">Up Next</div>
                             </div>
                             
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">University Week</div>
-                                    <div class="announcement-date">5 days ago</div>
+                            <div class="timeline-item">
+                                <div class="time-badge">01:00 PM</div>
+                                <div class="class-details">
+                                    <div class="class-name">Software Engineering</div>
+                                    <div class="class-info">Room: Main 304 • Prof. Reyes</div>
                                 </div>
-                                <div class="announcement-content">
-                                    Join us for EVSU Ormoc Campus University Week celebration from April 10-14, 2024.
+                                <div class="class-status status-upcoming">Later</div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="time-badge">03:30 PM</div>
+                                <div class="class-details">
+                                    <div class="class-name">Networking</div>
+                                    <div class="class-info">Room: Tech 202 • Prof. Lim</div>
                                 </div>
+                                <div class="class-status status-upcoming">Later</div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
                 
                 <!-- Quick Links -->
-                <div class="dashboard-card">
+                <!-- <div class="dashboard-card">
                     <div class="card-header">
                         <h5 class="card-title"><i class="fas fa-bolt"></i> Quick Links</h5>
                     </div>
@@ -442,7 +443,7 @@
                             <div class="quick-link-label">Clubs</div>
                         </a>
                     </div>
-                </div>
+                </div> -->
             </section>
 
             <!-- Profile Content -->
