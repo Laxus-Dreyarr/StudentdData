@@ -180,21 +180,12 @@
             }
         }
 
+        // 
         function handleEnrollment() {
             // Initialize variables
             let selectedSubjects = new Map();
             const studentId = document.querySelector('meta[name="student-id"]')?.content || 
                             document.getElementById('studentId')?.value;
-            
-            // Grade categories for distribution
-            const gradeCategories = {
-                'excellent': { min: 1.0, max: 1.5, color: '#28a745', label: '1.0-1.5' },
-                'good': { min: 1.6, max: 2.0, color: '#20c997', label: '1.6-2.0' },
-                'fair': { min: 2.1, max: 2.5, color: '#ffc107', label: '2.1-2.5' },
-                'passing': { min: 2.6, max: 3.0, color: '#fd7e14', label: '2.6-3.0' },
-                'failing': { min: 4.0, max: 5.0, color: '#dc3545', label: '4.0-5.0' },
-                'special': { color: '#6c757d', label: 'Special' }
-            };
             
             // Show modal if student hasn't enrolled yet
             function showEnrollmentModal() {
@@ -206,44 +197,32 @@
                 initFilters();
             }
             
-            // Initialize search functionality
+            // Initialize search functionality - FIXED
             function initSearch() {
                 const searchInput = document.getElementById('subjectSearch');
                 const clearSearchBtn = document.getElementById('clearSearch');
                 
                 if (!searchInput) return;
                 
-                // Search as user types
+                // Search as user types - FIXED: Use debounce for better performance
+                let searchTimeout;
                 searchInput.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase().trim();
-                    filterSubjects(searchTerm);
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        const searchTerm = this.value.toLowerCase().trim();
+                        filterSubjects(searchTerm);
+                    }, 300);
                 });
                 
-                // Clear search button
+                // Clear search button - FIXED
                 clearSearchBtn.addEventListener('click', function() {
                     searchInput.value = '';
                     filterSubjects('');
                     searchInput.focus();
                 });
-                
-                // Keyboard shortcuts
-                searchInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') {
-                        this.value = '';
-                        filterSubjects('');
-                    }
-                    if (e.key === 'Enter') {
-                        // Focus on first matching subject
-                        const firstVisible = document.querySelector('.subject-row:not(.hidden)');
-                        if (firstVisible) {
-                            const checkbox = firstVisible.querySelector('.subject-checkbox');
-                            checkbox.focus();
-                        }
-                    }
-                });
             }
             
-            // Initialize filter checkboxes
+            // Initialize filter checkboxes - FIXED
             function initFilters() {
                 const showSelectedOnly = document.getElementById('showSelectedOnly');
                 const hideCompleted = document.getElementById('hideCompleted');
@@ -261,7 +240,7 @@
                 }
             }
             
-            // Filter subjects based on search term and filters
+            // Filter subjects based on search term and filters - FIXED
             function filterSubjects(searchTerm) {
                 const showSelectedOnly = document.getElementById('showSelectedOnly')?.checked || false;
                 const hideCompleted = document.getElementById('hideCompleted')?.checked || false;
@@ -272,12 +251,16 @@
                     const subjectId = row.dataset.subjectId;
                     const isSelected = selectedSubjects.has(subjectId);
                     
-                    // Check if row matches search term
-                    const matchesSearch = searchTerm === '' || 
-                        code.includes(searchTerm) || 
-                        name.includes(searchTerm);
+                    // Convert to lowercase for case-insensitive search - FIXED
+                    const codeLower = code.toLowerCase();
+                    const nameLower = name.toLowerCase();
                     
-                    // Check if row matches filters
+                    // Check if row matches search term - FIXED
+                    const matchesSearch = searchTerm === '' || 
+                        codeLower.includes(searchTerm) || 
+                        nameLower.includes(searchTerm);
+                    
+                    // Check if row matches filters - FIXED: Don't hide selected subjects
                     let matchesFilters = true;
                     
                     if (showSelectedOnly && !isSelected) {
@@ -288,47 +271,47 @@
                         matchesFilters = false;
                     }
                     
-                    // Show or hide row
+                    // Show or hide row - FIXED: Only hide if doesn't match search/filters
                     if (matchesSearch && matchesFilters) {
                         row.classList.remove('hidden');
-                        row.classList.add('highlight', searchTerm !== '');
+                        // Only highlight if there's a search term
+                        if (searchTerm !== '') {
+                            row.classList.add('highlight');
+                        } else {
+                            row.classList.remove('highlight');
+                        }
                     } else {
                         row.classList.add('hidden');
                         row.classList.remove('highlight');
                     }
                 });
                 
-                // Update year level and semester visibility
+                // Update year level and semester visibility - FIXED
                 updateSectionVisibility();
             }
             
-            // Update visibility of year level and semester sections
+            // Update visibility of year level and semester sections - FIXED
             function updateSectionVisibility() {
                 document.querySelectorAll('.year-level-section').forEach(yearSection => {
-                    const visibleRows = yearSection.querySelectorAll('.subject-row:not(.hidden)');
+                    let yearHasVisible = false;
                     const semesterSections = yearSection.querySelectorAll('.semester-section');
                     
-                    // Hide semester sections with no visible rows
                     semesterSections.forEach(semesterSection => {
-                        const semesterVisibleRows = semesterSection.querySelectorAll('.subject-row:not(.hidden)');
-                        if (semesterVisibleRows.length === 0) {
+                        const visibleRows = semesterSection.querySelectorAll('.subject-row:not(.hidden)');
+                        if (visibleRows.length === 0) {
                             semesterSection.style.display = 'none';
                         } else {
                             semesterSection.style.display = 'block';
+                            yearHasVisible = true;
                         }
                     });
                     
-                    // Hide year level if all semester sections are hidden
-                    const visibleSemesters = yearSection.querySelectorAll('.semester-section[style="display: block"]');
-                    if (visibleSemesters.length === 0) {
-                        yearSection.style.display = 'none';
-                    } else {
-                        yearSection.style.display = 'block';
-                    }
+                    // Show/hide year level
+                    yearSection.style.display = yearHasVisible ? 'block' : 'none';
                 });
             }
             
-            // Handle subject selection
+            // Handle subject selection - FIXED: Removed filterSubjects call
             function handleSubjectSelection() {
                 document.addEventListener('change', function(e) {
                     if (e.target.classList.contains('subject-checkbox')) {
@@ -347,6 +330,9 @@
                             if (gradeSelect.value === '') {
                                 gradeSelect.value = '3.0'; // Default passing grade
                                 updateSelectedSubject(subjectId, gradeSelect.value);
+                            } else {
+                                // If grade already selected, update it
+                                updateSelectedSubject(subjectId, gradeSelect.value);
                             }
                         } else {
                             // Disable grade selection and remove selection
@@ -358,23 +344,28 @@
                         }
                         
                         updateSummary();
-                        filterSubjects(document.getElementById('subjectSearch').value);
+                        // REMOVED: filterSubjects(document.getElementById('subjectSearch').value);
                     }
                 });
             }
             
-            // Handle grade selection
+            // Handle grade selection - FIXED: Removed filterSubjects call
             function handleGradeSelection() {
                 document.addEventListener('change', function(e) {
-                    if (e.target.classList.contains('grade-select') && e.target.value) {
+                    if (e.target.classList.contains('grade-select')) {
                         const subjectId = e.target.dataset.subjectId;
-                        updateSelectedSubject(subjectId, e.target.value);
-                        updateSummary();
+                        const checkbox = document.querySelector(`.subject-checkbox[data-subject-id="${subjectId}"]`);
+                        
+                        // Only update if subject is checked
+                        if (checkbox && checkbox.checked && e.target.value) {
+                            updateSelectedSubject(subjectId, e.target.value);
+                            updateSummary();
+                        }
                     }
                 });
             }
             
-            // Handle undo button
+            // Handle undo button - FIXED
             function handleUndoButton() {
                 document.addEventListener('click', function(e) {
                     if (e.target.closest('.undo-btn')) {
@@ -389,12 +380,14 @@
                 });
             }
             
-            // Update selected subject in map
+            // Update selected subject in map - FIXED
             function updateSelectedSubject(subjectId, grade) {
                 const subjectRow = document.querySelector(`.subject-row[data-subject-id="${subjectId}"]`);
-                const subjectCode = subjectRow?.querySelector('.subject-code')?.textContent;
-                const subjectName = subjectRow?.querySelector('.subject-name')?.textContent;
-                const units = parseInt(subjectRow?.querySelector('.subject-checkbox')?.dataset.units) || 3;
+                if (!subjectRow) return;
+                
+                const subjectCode = subjectRow.querySelector('.subject-code')?.textContent;
+                const subjectName = subjectRow.querySelector('.subject-name')?.textContent;
+                const units = parseInt(subjectRow.querySelector('.subject-checkbox')?.dataset.units) || 3;
                 
                 selectedSubjects.set(subjectId, {
                     id: subjectId,
@@ -406,12 +399,12 @@
                 });
             }
             
-            // Remove selected subject from map
+            // Remove selected subject from map - FIXED
             function removeSelectedSubject(subjectId) {
                 selectedSubjects.delete(subjectId);
             }
             
-            // Convert letter grade to numeric based on EVSU system
+            // Convert letter grade to numeric based on EVSU system - FIXED
             function convertGradeToNumeric(grade) {
                 const gradeMap = {
                     // Passing Grades (1.0 to 3.0)
@@ -429,7 +422,7 @@
                 return gradeMap[grade] || 0;
             }
             
-            // Get grade category for styling
+            // Get grade category for styling - FIXED
             function getGradeCategory(numericGrade) {
                 if (numericGrade >= 1.0 && numericGrade <= 1.5) return 'excellent';
                 if (numericGrade >= 1.6 && numericGrade <= 2.0) return 'good';
@@ -439,28 +432,33 @@
                 return 'special'; // For INC, DRP, etc.
             }
             
-            // Get badge class based on grade
+            // Get badge class based on grade - FIXED
             function getGradeBadgeClass(grade) {
                 const numericGrade = convertGradeToNumeric(grade);
                 const category = getGradeCategory(numericGrade);
                 
                 switch(category) {
                     case 'excellent': return 'bg-success';
-                    case 'good': return 'bg-success'; // Slightly lighter green could be used
+                    case 'good': return 'bg-success';
                     case 'fair': return 'bg-warning text-dark';
                     case 'passing': return 'bg-warning text-dark';
                     case 'failing': return 'bg-danger';
-                    default: return 'bg-secondary'; // For INC, DRP
+                    default: return 'bg-secondary';
                 }
             }
             
-            // Update summary display
+            // Update summary display - FIXED
             function updateSummary() {
                 const selectedSubjectsList = document.getElementById('selectedSubjectsList');
                 const totalSubjectsCount = document.getElementById('totalSubjectsCount');
                 const totalUnitsCount = document.getElementById('totalUnitsCount');
                 const gwaPreview = document.getElementById('gwaPreview');
                 const submitBtn = document.getElementById('submitEnrollment');
+                
+                if (!selectedSubjectsList || !totalSubjectsCount || !totalUnitsCount || !gwaPreview || !submitBtn) {
+                    console.error('Required summary elements not found');
+                    return;
+                }
                 
                 // Update counts
                 totalSubjectsCount.textContent = selectedSubjects.size;
@@ -482,18 +480,11 @@
                 let gradeStats = [];
                 
                 selectedSubjects.forEach(subject => {
-                    const category = getGradeCategory(subject.numericGrade);
-                    const categoryColor = gradeCategories[category]?.color || '#6c757d';
-                    
                     listHTML += `
                         <div class="subject-item d-flex justify-content-between align-items-center mb-2 p-2">
-                            <div class="d-flex align-items-center">
-                                <div style="width: 8px; height: 20px; background-color: ${categoryColor}; 
-                                    margin-right: 10px; border-radius: 2px;"></div>
-                                <div>
-                                    <strong>${subject.code}</strong>: ${subject.name}
-                                    <span class="badge bg-light text-dark border ms-2">${subject.units} units</span>
-                                </div>
+                            <div>
+                                <strong>${subject.code}</strong>: ${subject.name}
+                                <span class="badge bg-light text-dark border ms-2">${subject.units} units</span>
                             </div>
                             <div>
                                 <span class="badge ${getGradeBadgeClass(subject.grade)} grade-badge">
@@ -512,7 +503,7 @@
                     gradeStats.push({
                         grade: subject.numericGrade,
                         units: subject.units,
-                        category: category
+                        category: getGradeCategory(subject.numericGrade)
                     });
                 });
                 
@@ -530,7 +521,7 @@
                 submitBtn.disabled = selectedSubjects.size === 0;
             }
             
-            // Update grade distribution display
+            // Update grade distribution display - FIXED
             function updateGradeDistribution(gradeStats) {
                 const distribution = {
                     excellent: 0,
@@ -548,48 +539,57 @@
                     }
                 });
                 
-                // Calculate percentages for progress bars
                 const total = gradeStats.length;
-                let passingCount = distribution.excellent + distribution.good + distribution.fair + distribution.passing;
-                let failingCount = distribution.failing;
-                let specialCount = distribution.special;
                 
-                // Update progress bars
+                // Update progress bars if they exist
                 const passingBar = document.getElementById('passingGradeBar');
                 const conditionalBar = document.getElementById('conditionalGradeBar');
                 const failingBar = document.getElementById('failingGradeBar');
                 
-                if (passingBar && conditionalBar && failingBar) {
-                    const passingPercent = total > 0 ? (distribution.excellent / total) * 100 : 0;
-                    const conditionalPercent = total > 0 ? ((distribution.good + distribution.fair + distribution.passing) / total) * 100 : 0;
-                    const failingPercent = total > 0 ? (distribution.failing / total) * 100 : 0;
+                if (passingBar && conditionalBar && failingBar && total > 0) {
+                    const passingPercent = (distribution.excellent / total) * 100;
+                    const conditionalPercent = ((distribution.good + distribution.fair + distribution.passing) / total) * 100;
+                    const failingPercent = (distribution.failing / total) * 100;
                     
                     passingBar.style.width = `${passingPercent}%`;
-                    passingBar.textContent = distribution.excellent > 0 ? `${distribution.excellent}` : '';
-                    
                     conditionalBar.style.width = `${conditionalPercent}%`;
-                    conditionalBar.textContent = (distribution.good + distribution.fair + distribution.passing) > 0 ? 
-                        `${distribution.good + distribution.fair + distribution.passing}` : '';
-                    
                     failingBar.style.width = `${failingPercent}%`;
-                    failingBar.textContent = distribution.failing > 0 ? `${distribution.failing}` : '';
-                }
-                
-                // Update distribution text
-                const distributionElement = document.getElementById('gradeDistribution');
-                if (distributionElement) {
-                    let html = '<small class="text-muted">';
-                    if (total === 0) {
-                        html += 'No grades selected';
+                    
+                    // Add text to bars if they have significant width
+                    if (distribution.excellent > 0) {
+                        passingBar.textContent = `${distribution.excellent}`;
                     } else {
-                        html += `Passing: ${passingCount} | Failing: ${failingCount} | Special: ${specialCount}`;
+                        passingBar.textContent = '';
                     }
-                    html += '</small>';
-                    distributionElement.innerHTML = html;
+                    
+                    if ((distribution.good + distribution.fair + distribution.passing) > 0) {
+                        conditionalBar.textContent = `${distribution.good + distribution.fair + distribution.passing}`;
+                    } else {
+                        conditionalBar.textContent = '';
+                    }
+                    
+                    if (distribution.failing > 0) {
+                        failingBar.textContent = `${distribution.failing}`;
+                    } else {
+                        failingBar.textContent = '';
+                    }
                 }
             }
             
-            // Handle form submission
+            // Calculate GWA - FIXED
+            function calculateGWA() {
+                let totalGradePoints = 0;
+                let totalUnits = 0;
+                
+                selectedSubjects.forEach(subject => {
+                    totalGradePoints += (subject.numericGrade * subject.units);
+                    totalUnits += subject.units;
+                });
+                
+                return totalUnits > 0 ? totalGradePoints / totalUnits : 0;
+            }
+            
+            // Handle form submission - FIXED
             function handleSubmission() {
                 const submitBtn = document.getElementById('submitEnrollment');
                 if (!submitBtn) return;
@@ -600,15 +600,9 @@
                         return;
                     }
                     
-                    // Calculate final GWA for confirmation
-                    const finalGWA = calculateGWA();
-                    
-                    // Confirm submission with details
+                    // Confirm submission
                     const confirmMessage = `
         You are about to submit ${selectedSubjects.size} subjects.
-
-        • Total Units: ${document.getElementById('totalUnitsCount').textContent}
-        • Preliminary GWA: ${finalGWA.toFixed(2)}
 
         This action cannot be undone. Proceed with submission?
                     `.trim();
@@ -636,7 +630,7 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                             },
                             body: JSON.stringify({
-                                // student_id: studentId,
+                                student_id: studentId,
                                 enrolled_subjects: enrollmentData
                             })
                         });
@@ -644,7 +638,7 @@
                         const result = await response.json();
                         
                         if (result.success) {
-                            // Show success message with GWA
+                            // Show success message
                             const successMessage = `
         ✅ Successfully enrolled ${result.enrollment_count} subjects!
 
@@ -658,7 +652,7 @@
                             
                             // Close modal and reload page
                             const modal = bootstrap.Modal.getInstance(document.getElementById('enrollmentModal'));
-                            modal.hide();
+                            if (modal) modal.hide();
                             
                             // Reload page to show updated dashboard
                             setTimeout(() => location.reload(), 2000);
@@ -674,24 +668,12 @@
                 });
             }
             
-            // Calculate GWA
-            function calculateGWA() {
-                let totalGradePoints = 0;
-                let totalUnits = 0;
-                
-                selectedSubjects.forEach(subject => {
-                    totalGradePoints += (subject.numericGrade * subject.units);
-                    totalUnits += subject.units;
-                });
-                
-                return totalUnits > 0 ? totalGradePoints / totalUnits : 0;
-            }
-            
-            // Initialize all event listeners
+            // Initialize all event listeners - FIXED
             function init() {
                 // Check if modal should be shown
                 if (document.getElementById('enrollmentModal')) {
-                    setTimeout(showEnrollmentModal, 1000); // Show after 1 second
+                    // Don't auto-show immediately, let user see dashboard first
+                    setTimeout(showEnrollmentModal, 1500);
                     
                     // Initialize event listeners
                     handleSubjectSelection();
@@ -708,6 +690,7 @@
                 calculateGWA: calculateGWA
             };
         }
+        // 
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
