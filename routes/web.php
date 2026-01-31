@@ -21,9 +21,9 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('student.dashboard');
-});
+Route::get('/login', function () {
+    return view('welcome');  // Or redirect to '/'
+})->name('login');
 
 // Student Routes
 Route::prefix('/exe')->group(function (){
@@ -38,9 +38,7 @@ Route::prefix('/exe')->group(function (){
 
 // Protected routes (require authentication)
 Route::middleware(['auth:student'])->group(function () {
-    // Route::get('/dashboard', function () {
-    //     return view('dashboard');
-    // });
+    Route::get('/student-dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
     
     // Add other protected routes here
 });

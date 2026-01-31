@@ -40,7 +40,7 @@ class User extends Authenticatable
     }
 
     // Specify the guard for this model
-    protected $guard = 'student';
+    // protected $guard = 'student';
 
     // Define relationship with UserInfo model
     public function user_information()
