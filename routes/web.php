@@ -31,15 +31,19 @@ Route::prefix('/exe')->group(function (){
 
     // Authentication
     Route::post('/login', [StudentController::class, 'login']);
-    Route::post('/logout', [StudentController::class, 'logout']);
     Route::post('/forgot-password', [StudentController::class, 'forgotPassword']);
     Route::get('/user', [StudentController::class, 'user']);
+});
+
+// GET route for convenience
+Route::get('/logout', function() {
+    return view('logout-redirect'); // Create this view
 });
 
 // Protected routes (require authentication)
 Route::middleware(['auth:student'])->group(function () {
     Route::get('/student-dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
-    
+    Route::post('/student/logout', [StudentController::class, 'logout'])->name('student.logout');
     // Add other protected routes here
 });
 

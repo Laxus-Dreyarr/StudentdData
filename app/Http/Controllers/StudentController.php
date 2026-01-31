@@ -489,17 +489,37 @@ class StudentController extends Controller
     /**
      * Handle student logout
      */
+    
     public function logout(Request $request)
     {
-        Auth::guard('student')->logout();
+        // Check if user is logged in
+        if (Auth::guard('student')->check()) {
+            // Logout the student
+            Auth::guard('student')->logout();
+            
+            // Invalidate the session
+            $request->session()->invalidate();
+            
+            // Regenerate the CSRF token
+            $request->session()->regenerateToken();
+            
+            // Return JSON response for AJAX
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Logged out successfully',
+                    'redirect' => '/'
+                ]);
+            }
+            
+            // Redirect to login page
+            return redirect('/')->with('success', 'Logged out successfully');
+        }
         
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
         return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully'
-        ]);
+            'success' => false,
+            'message' => 'No user logged in'
+        ], 401);
     }
 
     public function dashboard(Request $request)
