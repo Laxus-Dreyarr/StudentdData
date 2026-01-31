@@ -490,12 +490,21 @@ class StudentController extends Controller
      * Handle student logout
      */
     
+    
+
     public function logout(Request $request)
     {
         // Check if user is logged in
         if (Auth::guard('student')->check()) {
+            // Get the current session ID before logout (for debugging)
+            $sessionId = $request->session()->getId();
+            Log::info("Logging out student. Session ID: " . $sessionId);
+            
             // Logout the student
             Auth::guard('student')->logout();
+            
+            // Flush all session data
+            $request->session()->flush();
             
             // Invalidate the session
             $request->session()->invalidate();
@@ -503,17 +512,46 @@ class StudentController extends Controller
             // Regenerate the CSRF token
             $request->session()->regenerateToken();
             
+            // Clear all session cookies
+            $cookieNames = [
+                config('session.cookie'), // Default: 'enrollsys_studentdata_session'
+                'XSRF-TOKEN',
+            ];
+            
+            $response = null;
+            
             // Return JSON response for AJAX
             if ($request->ajax()) {
-                return response()->json([
+                $response = response()->json([
                     'success' => true,
                     'message' => 'Logged out successfully',
                     'redirect' => '/'
                 ]);
+            } else {
+                // Redirect to login page
+                $response = redirect('/')->with('success', 'Logged out successfully');
             }
             
-            // Redirect to login page
-            return redirect('/')->with('success', 'Logged out successfully');
+            // Clear each cookie
+            foreach ($cookieNames as $cookieName) {
+                $response->withCookie(cookie()->forget($cookieName));
+            }
+            
+            // Also try to expire the session cookie with proper path
+            $sessionName = config('session.cookie');
+            $response->withCookie(cookie(
+                $sessionName,
+                null,
+                -1,
+                config('session.path'),
+                config('session.domain'),
+                config('session.secure'),
+                config('session.http_only'),
+                false,
+                config('session.same_site')
+            ));
+            
+            return $response;
         }
         
         return response()->json([
@@ -528,6 +566,7 @@ class StudentController extends Controller
             return redirect('/')->with('error', 'Please login first.');
         }
 
+        
         $user = Auth::guard('student')->user();
 
         // Get current date for SY and SEM calculation
