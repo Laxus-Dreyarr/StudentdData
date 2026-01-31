@@ -936,179 +936,378 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         <h5 class="modal-title" id="enrollmentModalLabel">Enroll Subjects</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <!--  -->
                     <div class="modal-body">
                         <p class="mb-4">Please select the subjects you have already accomplished and provide your grades.</p>
                         
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> Select subjects by checking the box, then choose your grade from the dropdown.
+                            <i class="fas fa-info-circle"></i> You can either select subjects from the dropdowns or use the search bar to find specific subjects.
                         </div>
                         
-                        {{-- Search Bar --}}
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                    <input type="text" class="form-control" id="subjectSearch" 
-                                        placeholder="Search by subject code or name...">
-                                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted">Type to filter subjects by code or name</small>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="showSelectedOnly">
-                                    <label class="form-check-label" for="showSelectedOnly">
-                                        Show selected subjects only
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="hideCompleted">
-                                    <label class="form-check-label" for="hideCompleted">
-                                        Hide already selected subjects
-                                    </label>
-                                </div>
+                        {{-- View Toggle Buttons --}}
+                        <div class="mb-4">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="tableViewBtn">
+                                    <i class="fas fa-table"></i> Table View
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="dropdownViewBtn">
+                                    <i class="fas fa-th-large"></i> Card View
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="quickAddBtnToggle">
+                                    <i class="fas fa-bolt"></i> Quick Add
+                                </button>
                             </div>
                         </div>
                         
-                        <div id="subjectSelectionContainer">
-                            @foreach($availableSubjects as $yearLevel => $semesters)
-                                <div class="year-level-section mb-5">
-                                    <h4 class="year-level-header">{{ $yearLevel }}</h4>
-                                    
-                                    @foreach($semesters as $semester => $subjects)
-                                        <div class="semester-section mb-4">
-                                            <h5 class="semester-header">{{ $semester }}</h5>
-                                            <div class="table-responsive">
-                                                <table class="table table-bordered table-hover subject-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th width="50">Select</th>
-                                                            <th width="100">Code</th>
-                                                            <th>Subject Name</th>
-                                                            <th width="80">Units</th>
-                                                            <th width="120">Grade</th>
-                                                            <th width="100">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach($subjects as $subject)
-                                                        <tr data-subject-id="{{ $subject->id }}" 
-                                                            data-code="{{ strtoupper($subject->code) }}"
-                                                            data-name="{{ strtoupper($subject->name) }}"
-                                                            class="subject-row">
-                                                            <td class="text-center">
-                                                                <input type="checkbox" class="form-check-input subject-checkbox" 
-                                                                    data-subject-id="{{ $subject->id }}"
-                                                                    data-units="{{ $subject->units ?? 3 }}"
-                                                                    id="subject_{{ $subject->id }}">
-                                                            </td>
-                                                            <td class="subject-code">{{ $subject->code }}</td>
-                                                            <td class="subject-name">{{ $subject->name }}</td>
-                                                            <td class="text-center">{{ $subject->units ?? 3 }}</td>
-                                                            <td>
-                                                                <select class="form-select form-select-sm grade-select" 
-                                                                        data-subject-id="{{ $subject->id }}" 
-                                                                        disabled>
-                                                                    <option value="">-- Select --</option>
-                                                                    {{-- Generate grades from 1.0 to 3.0 --}}
-                                                                    @for($i = 1.0; $i <= 3.0; $i += 0.1)
-                                                                        @php
-                                                                            $grade = number_format($i, 1);
-                                                                            $gradeLabel = $grade;
-                                                                        @endphp
-                                                                        <option value="{{ $grade }}">{{ $gradeLabel }}</option>
-                                                                    @endfor
-                                                                    <option value="4.0">4.0</option>
-                                                                    <option value="5.0">5.0</option>
-                                                                    <option value="INC">INC</option>
-                                                                    <option value="DRP">DRP</option>
-                                                                    <option value="PASS">PASS</option>
-                                                                    <option value="FAIL">FAIL</option>
-                                                                </select>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <button type="button" class="btn btn-sm btn-outline-secondary undo-btn" 
-                                                                        data-subject-id="{{ $subject->id }}"
-                                                                        style="display: none;">
-                                                                    <i class="fas fa-undo"></i> Undo
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
+                        {{-- TABLE VIEW (Only shown when table view is active) --}}
+                        <div id="tableView" class="subject-view">
+                            {{-- Search and Filters --}}
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="subjectSearch" 
+                                            placeholder="Search by subject code or name...">
+                                        <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Type to filter subjects</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="showSelectedOnly">
+                                                <label class="form-check-label" for="showSelectedOnly">
+                                                    Show selected only
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="hideCompleted">
+                                                <label class="form-check-label" for="hideCompleted">
+                                                    Hide selected
+                                                </label>
                                             </div>
                                         </div>
-                                    @endforeach
-                                </div>
-                            @endforeach
-                        </div>
-                        
-                        {{-- GWA Calculation Information --}}
-                        <div class="alert alert-primary">
-                            <h6><i class="fas fa-calculator"></i> GWA (General Weighted Average) Calculation</h6>
-                            <small>
-                                GWA is calculated by: <strong>(Sum of (Grade × Units)) ÷ Total Units</strong><br>
-                                Passing Grades: 1.0 to 3.0 | Failing Grades: 4.0 to 5.0<br>
-                                <strong>Note:</strong> INC and DRP are counted as 0.0 and will affect your GWA
-                            </small>
-                        </div>
-                        
-                        {{-- Selected Subjects Summary --}}
-                        <div class="selected-subjects-summary mb-4">
-                            <h5>Selected Subjects Summary</h5>
-                            <div id="selectedSubjectsList" class="mb-3">
-                                <p class="text-muted">No subjects selected yet.</p>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="alert alert-secondary">
-                                        <strong>Total Selected Subjects:</strong> <span id="totalSubjectsCount">0</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="alert alert-info">
-                                        <strong>Total Units:</strong> <span id="totalUnitsCount">0</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="alert alert-primary">
-                                        <strong>GWA (Preliminary):</strong> <span id="gwaPreview">0.00</span>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="expandAll">
+                                                <label class="form-check-label" for="expandAll">
+                                                    Expand all
+                                                </label>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="selectAllVisible">
+                                                <i class="fas fa-check-square"></i> Select all visible
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            {{-- Grade Distribution --}}
-                            <div class="mt-3">
-                                <h6>Grade Distribution</h6>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="progress" style="height: 25px;">
+                            <div id="subjectSelectionContainer">
+                                @foreach($availableSubjects as $yearLevel => $semesters)
+                                    <div class="year-level-section mb-5">
+                                        <h4 class="year-level-header d-flex justify-content-between align-items-center">
+                                            <span>{{ $yearLevel }}</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary toggle-year" 
+                                                    data-year="{{ $yearLevel }}">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                        </h4>
+                                        
+                                        @foreach($semesters as $semester => $subjects)
+                                            <div class="semester-section mb-4">
+                                                <h5 class="semester-header d-flex justify-content-between align-items-center">
+                                                    <span>{{ $semester }}</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary toggle-semester" 
+                                                            data-semester="{{ $semester }}">
+                                                        <i class="fas fa-chevron-down"></i>
+                                                    </button>
+                                                </h5>
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-hover subject-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th width="50">Select</th>
+                                                                <th width="100">Code</th>
+                                                                <th>Subject Name</th>
+                                                                <th width="80">Units</th>
+                                                                <th width="120">Grade</th>
+                                                                <th width="100">Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($subjects as $subject)
+                                                            <tr data-subject-id="{{ $subject->id }}" 
+                                                                data-code="{{ strtoupper($subject->code) }}"
+                                                                data-name="{{ strtoupper($subject->name) }}"
+                                                                class="subject-row">
+                                                                <td class="text-center">
+                                                                    <input type="checkbox" class="form-check-input subject-checkbox" 
+                                                                        data-subject-id="{{ $subject->id }}"
+                                                                        data-units="{{ $subject->units ?? 3 }}"
+                                                                        id="subject_{{ $subject->id }}">
+                                                                </td>
+                                                                <td class="subject-code">{{ $subject->code }}</td>
+                                                                <td class="subject-name">{{ $subject->name }}</td>
+                                                                <td class="text-center">{{ $subject->units ?? 3 }}</td>
+                                                                <td>
+                                                                    <select class="form-select form-select-sm grade-select" 
+                                                                            data-subject-id="{{ $subject->id }}" 
+                                                                            disabled>
+                                                                        <option value="">-- Select --</option>
+                                                                        @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                                            @php
+                                                                                $grade = number_format($i, 1);
+                                                                                $gradeLabel = $grade;
+                                                                            @endphp
+                                                                            <option value="{{ $grade }}">{{ $gradeLabel }}</option>
+                                                                        @endfor
+                                                                        <option value="4.0">4.0</option>
+                                                                        <option value="5.0">5.0</option>
+                                                                        <option value="INC">INC</option>
+                                                                        <option value="DRP">DRP</option>
+                                                                        <option value="PASS">PASS</option>
+                                                                        <option value="FAIL">FAIL</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <button type="button" class="btn btn-sm btn-outline-secondary undo-btn" 
+                                                                            data-subject-id="{{ $subject->id }}"
+                                                                            style="display: none;">
+                                                                        <i class="fas fa-undo"></i> Undo
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        {{-- CARD VIEW (Only shown when card view is active) --}}
+                        <div id="cardView" class="subject-view" style="display: none;">
+                            {{-- Quick Subject Add Dropdown --}}
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-bolt"></i> Quick Add Subject</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Year Level</label>
+                                            <select class="form-select" id="quickYearSelect">
+                                                <option value="">All Years</option>
+                                                @foreach($availableSubjects as $yearLevel => $semesters)
+                                                    <option value="{{ $yearLevel }}">{{ $yearLevel }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Semester</label>
+                                            <select class="form-select" id="quickSemesterSelect">
+                                                <option value="">All Semesters</option>
+                                                <option value="1st Sem">1st Semester</option>
+                                                <option value="2nd Sem">2nd Semester</option>
+                                                <option value="Summer">Summer</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Subject</label>
+                                            <select class="form-select" id="quickSubjectSelect">
+                                                <option value="">Select a subject</option>
+                                                @foreach($availableSubjects as $yearLevel => $semesters)
+                                                    @foreach($semesters as $semester => $subjects)
+                                                        @foreach($subjects as $subject)
+                                                            <option value="{{ $subject->id }}" 
+                                                                    data-year="{{ $yearLevel }}"
+                                                                    data-semester="{{ $semester }}"
+                                                                    data-units="{{ $subject->units ?? 3 }}">
+                                                                {{ $subject->code }} - {{ $subject->name }}
+                                                            </option>
+                                                        @endforeach
+                                                    @endforeach
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Grade</label>
+                                            <select class="form-select" id="quickGradeSelect">
+                                                <option value="">Select Grade</option>
+                                                @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                    @php
+                                                        $grade = number_format($i, 1);
+                                                        $gradeLabel = $grade;
+                                                    @endphp
+                                                    <option value="{{ $grade }}">{{ $gradeLabel }}</option>
+                                                @endfor
+                                                <option value="4.0">4.0</option>
+                                                <option value="5.0">5.0</option>
+                                                <option value="INC">INC</option>
+                                                <option value="DRP">DRP</option>
+                                                <option value="PASS">PASS</option>
+                                                <option value="FAIL">FAIL</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <button type="button" class="btn btn-primary w-100 mt-2" id="quickAddBtn">
+                                                <i class="fas fa-plus"></i> Add Subject
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {{-- Subject Cards --}}
+                            <div class="accordion" id="subjectAccordion">
+                                @foreach($availableSubjects as $yearLevel => $semesters)
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button" type="button" data-bs-toggle="collapse" 
+                                                    data-bs-target="#collapse{{ str_replace(' ', '', $yearLevel) }}">
+                                                <i class="fas fa-graduation-cap me-2"></i> {{ $yearLevel }}
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ str_replace(' ', '', $yearLevel) }}" class="accordion-collapse collapse show" 
+                                            data-bs-parent="#subjectAccordion">
+                                            <div class="accordion-body">
+                                                @foreach($semesters as $semester => $subjects)
+                                                    <div class="mb-4">
+                                                        <h6 class="mb-3 border-bottom pb-2">
+                                                            <i class="fas fa-calendar-alt me-2"></i> {{ $semester }}
+                                                        </h6>
+                                                        <div class="row">
+                                                            @foreach($subjects as $subject)
+                                                            <div class="col-md-6 col-lg-4 mb-3">
+                                                                <div class="card subject-card h-100" data-subject-id="{{ $subject->id }}">
+                                                                    <div class="card-body">
+                                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                            <div>
+                                                                                <h6 class="card-title mb-1 text-primary">{{ $subject->code }}</h6>
+                                                                                <p class="card-text small">{{ $subject->name }}</p>
+                                                                            </div>
+                                                                            <span class="badge bg-secondary">{{ $subject->units ?? 3 }} units</span>
+                                                                        </div>
+                                                                        <div class="d-flex justify-content-between align-items-center">
+                                                                            <div class="form-check">
+                                                                                <input type="checkbox" class="form-check-input subject-checkbox-card" 
+                                                                                    data-subject-id="{{ $subject->id }}"
+                                                                                    data-units="{{ $subject->units ?? 3 }}"
+                                                                                    id="subject_card_{{ $subject->id }}">
+                                                                                <label class="form-check-label small" for="subject_card_{{ $subject->id }}">
+                                                                                    Select
+                                                                                </label>
+                                                                            </div>
+                                                                            <div class="grade-selection" style="display: none;">
+                                                                                <select class="form-select form-select-sm grade-select-card" 
+                                                                                        data-subject-id="{{ $subject->id }}"
+                                                                                        style="width: 120px;">
+                                                                                    <option value="">Grade</option>
+                                                                                    @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                                                        @php
+                                                                                            $grade = number_format($i, 1);
+                                                                                            $gradeLabel = $grade;
+                                                                                        @endphp
+                                                                                        <option value="{{ $grade }}">{{ $gradeLabel }}</option>
+                                                                                    @endfor
+                                                                                    <option value="4.0">4.0</option>
+                                                                                    <option value="5.0">5.0</option>
+                                                                                    <option value="INC">INC</option>
+                                                                                    <option value="DRP">DRP</option>
+                                                                                    <option value="PASS">PASS</option>
+                                                                                    <option value="FAIL">FAIL</option>
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="card-footer bg-transparent border-top-0 pt-0">
+                                                                        <button type="button" class="btn btn-sm btn-outline-danger w-100 undo-btn-card" 
+                                                                                data-subject-id="{{ $subject->id }}"
+                                                                                style="display: none;">
+                                                                            <i class="fas fa-times"></i> Remove
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        {{-- Selected Subjects Summary --}}
+                        <div class="selected-subjects-summary mt-4">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0"><i class="fas fa-list-check"></i> Selected Subjects Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="selectedSubjectsList" class="mb-3" style="max-height: 200px; overflow-y: auto;">
+                                        <p class="text-muted mb-0">No subjects selected yet.</p>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="alert alert-secondary">
+                                                <small>Total Subjects</small>
+                                                <h4 class="mb-0" id="totalSubjectsCount">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="alert alert-info">
+                                                <small>Total Units</small>
+                                                <h4 class="mb-0" id="totalUnitsCount">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="alert alert-warning">
+                                                <small>Grade Points</small>
+                                                <h4 class="mb-0" id="totalGradePoints">0.00</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="alert alert-primary">
+                                                <small>GWA</small>
+                                                <h4 class="mb-0" id="gwaPreview">0.00</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {{-- Grade Distribution --}}
+                                    <div class="mt-3">
+                                        <h6>Grade Distribution</h6>
+                                        <div class="progress mb-2" style="height: 25px;">
                                             <div class="progress-bar bg-success" id="passingGradeBar" style="width: 0%"></div>
                                             <div class="progress-bar bg-warning" id="conditionalGradeBar" style="width: 0%"></div>
                                             <div class="progress-bar bg-danger" id="failingGradeBar" style="width: 0%"></div>
                                         </div>
-                                        <small class="text-muted">
-                                            <span class="badge bg-success">1.0-1.5</span>
-                                            <span class="badge bg-warning">1.6-3.0</span>
-                                            <span class="badge bg-danger">4.0-5.0/FAIL</span>
-                                            <span class="badge bg-secondary">INC/DRP</span>
-                                        </small>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div id="gradeDistribution"></div>
+                                        <div class="d-flex justify-content-between small">
+                                            <span><span class="badge bg-success">1.0-1.5</span> <span id="excellentCount">0</span></span>
+                                            <span><span class="badge bg-warning">1.6-3.0</span> <span id="goodCount">0</span></span>
+                                            <span><span class="badge bg-danger">4.0-5.0</span> <span id="failingCount">0</span></span>
+                                            <span><span class="badge bg-secondary">INC/DRP</span> <span id="specialCount">0</span></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="alert alert-warning">
+                        <div class="alert alert-warning mt-4">
                             <i class="fas fa-exclamation-triangle"></i> 
                             Please review your selections before submitting. This action cannot be undone.
                         </div>
                     </div>
+                    <!--  -->
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-primary" id="submitEnrollment" disabled>
