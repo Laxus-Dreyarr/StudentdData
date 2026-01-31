@@ -18,7 +18,8 @@
         function updateWelcomeMessage() {
             const hour = new Date().getHours();
             const welcomeElement = document.querySelector('.welcome-content h1');
-            const name = "James";
+            // const name = document.querySelector('.user-name').textContent;
+            const name = $(".user-name2").val();
             
             if (hour < 12) {
                 welcomeElement.textContent = `Good morning, ${name}!`;
@@ -144,6 +145,30 @@
             
             const title = sectionTitles[section] || 'EVSU Student Dashboard';
             document.querySelector('.brand-text h4').textContent = `EVSU - ${title}`;
+        }
+
+        async function logout(e) {
+            e.preventDefault();
+            
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                
+                const response = await fetch('/exe/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                // Redirect regardless of response (logout should always redirect)
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/';
+            }
         }
         
         // Initialize dashboard

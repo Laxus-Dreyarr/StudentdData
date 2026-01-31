@@ -1,3 +1,8 @@
+<?php
+$studentname = $user->user_information->lastname . ' ' . $user->user_information->firstname;
+$lastname = $user->user_information->lastname;
+$user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . substr($user->user_information->lastname, 0, 1));
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,10 +52,10 @@
                     
                     <div class="user-profile">
                         <div class="user-avatar">
-                            JD
+                            {{$user_avatar}}
                         </div>
                         <div class="user-info">
-                            <div class="user-name">Carl James Duallo</div>
+                            <div class="user-name">{{ $studentname }}</div>
                             <div class="user-role">BS Informtion Technology</div>
                         </div>
                     </div>
@@ -146,21 +151,29 @@
                     </div>
                 </div> -->
                 
-                <!-- <div class="nav-section">
+                <div class="nav-section">
                     <div class="nav-label">Support</div>
-                    <div class="nav-item">
+                    <!-- <div class="nav-item">
                         <a class="nav-link" data-section="help">
                             <i class="fas fa-headset nav-icon"></i>
                             <span>Help Center</span>
                         </a>
-                    </div>
-                    <div class="nav-item">
+                    </div> -->
+                    <!-- <div class="nav-item">
                         <a class="nav-link" data-section="settings">
                             <i class="fas fa-cog nav-icon"></i>
                             <span>Settings</span>
                         </a>
-                    </div>
-                </div> -->
+                    </div> -->
+                    @auth('student')
+                        <div class="nav-item">
+                            <a onclick="logout(event)" style="text-decoration: none; cursor: pointer" class="text-danger">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    @endauth
+                </div>
             </div>
         </aside>
 
@@ -171,7 +184,8 @@
                 <!-- Welcome Section -->
                 <section class="welcome-section">
                     <div class="welcome-content">
-                        <h1>Welcome back, James!</h1>
+                        <h1>Welcome back</h1>
+                        <input type="hidden" class="user-name2" value="{{ $lastname }}">
                         <!-- <p>You have 2 upcoming assignments and 1 quiz this week. Your next class starts in 45 minutes.</p> -->
                         
                         <div class="welcome-stats">
@@ -929,6 +943,7 @@
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
 </body>
 </html>
