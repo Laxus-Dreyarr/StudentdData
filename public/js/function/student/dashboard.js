@@ -1163,10 +1163,9 @@ function showToast(message, type = 'success') {
                         if (result.success) {
                             // Show success message
                             const successMessage = `
-                                ✅ Successfully enrolled ${result.enrollment_count} subjects!
+                                ✅ Successfully selected ${result.enrollment_count} subjects!
 
                                 • Final GWA: ${result.gwa}
-                                • Status: Officially Enrolled
 
                                 The page will refresh in a moment...
                             `.trim();
