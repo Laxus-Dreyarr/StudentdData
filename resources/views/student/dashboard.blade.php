@@ -9,6 +9,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="student-id" content="{{ $studentId ?? '' }}">
     
     <title>EVSU Ormoc - Student Dashboard</title>
     <!-- Bootstrap 5 CSS -->
@@ -196,8 +197,19 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     <i class="fas fa-chart-line"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <h3>3.78</h3>
+                                    <h3>
+                                        @if($hasEnrolledSubjects && isset($currentYearGWA))
+                                            {{ number_format($currentYearGWA, 2) }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </h3>
                                     <p>Current GPA</p>
+                                    @if($hasEnrolledSubjects && isset($gwa) && $gwa > 0)
+                                        <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
+                                            Overall: {{ number_format($gwa, 2) }}
+                                        </small> -->
+                                    @endif
                                 </div>
                             </div>
                             
@@ -206,8 +218,13 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     <i class="fas fa-check-circle"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <h3>5</h3>
+                                    <h3>{{ $currentYearSubjects ?? 0 }}</h3>
                                     <p>Subjects</p>
+                                    @if($hasEnrolledSubjects && isset($totalSubjects) && $totalSubjects > 0)
+                                        <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
+                                            Total: {{ $totalSubjects }} subjects
+                                        </small> -->
+                                    @endif
                                 </div>
                             </div>
                             
@@ -216,8 +233,13 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     <i class="fas fa-book"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <h3>15</h3>
+                                    <h3>{{ $currentYearUnits ?? 0 }}</h3>
                                     <p>Units Enrolled</p>
+                                    @if($hasEnrolledSubjects && isset($totalUnits) && $totalUnits > 0)
+                                        <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
+                                            Total: {{ $totalUnits }} units
+                                        </small> -->
+                                    @endif
                                 </div>
                             </div>
                         </div>

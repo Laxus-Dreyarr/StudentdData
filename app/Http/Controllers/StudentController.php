@@ -594,6 +594,42 @@ class StudentController extends Controller
 
         // Check if student has enrolled subjects
         $hasEnrolledSubjects = EnrolledSubjects::where('student_id', $student->id)->exists();
+
+        // Initialize variables for dashboard stats
+        $gwa = 0;
+        $totalSubjects = 0;
+        $totalUnits = 0;
+        $enrolledSubjects = collect();
+
+        // If student has enrolled subjects, calculate real data
+        if ($hasEnrolledSubjects) {
+            // Get enrolled subjects with subject details
+            $enrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+                ->with(['subject' => function($query) {
+                    $query->select('id', 'code', 'name', 'units');
+                }])
+                ->get();
+            
+            // Calculate statistics
+            $totalSubjects = $enrolledSubjects->count();
+            $totalGradePoints = 0;
+            
+            foreach ($enrolledSubjects as $enrolled) {
+                if ($enrolled->subject) {
+                    $units = $enrolled->subject->units ?? 3;
+                    $totalUnits += $units;
+                    
+                    // Calculate grade points
+                    $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
+                    $totalGradePoints += ($numericGrade * $units);
+                }
+            }
+            
+            // Calculate GWA
+            if ($totalUnits > 0) {
+                $gwa = $totalGradePoints / $totalUnits;
+            }
+        }
         
         // If no enrolled subjects, get available subjects for their curriculum
         $availableSubjects = [];
@@ -629,13 +665,81 @@ class StudentController extends Controller
             }
         }
 
+        // Get student's enrolled subjects for the current school year
+        $currentYearEnrolled = $enrolledSubjects->filter(function($enrolled) use ($student) {
+            // You might need to filter by school year if you store it
+            return true; // For now, return all
+        });
+
+        // Calculate current year stats
+        $currentYearSubjects = $currentYearEnrolled->count();
+        $currentYearUnits = 0;
+        $currentYearGradePoints = 0;
+        
+        foreach ($currentYearEnrolled as $enrolled) {
+            if ($enrolled->subject) {
+                $units = $enrolled->subject->units ?? 3;
+                $currentYearUnits += $units;
+                
+                $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
+                $currentYearGradePoints += ($numericGrade * $units);
+            }
+        }
+
+        $currentYearGWA = $currentYearUnits > 0 ? $currentYearGradePoints / $currentYearUnits : 0;
+    
+        // Get grade distribution
+        $gradeDistribution = [
+            'excellent' => 0, // 1.0-1.5
+            'good' => 0,      // 1.6-2.0
+            'fair' => 0,      // 2.1-2.5
+            'passing' => 0,   // 2.6-3.0
+            'failing' => 0,   // 4.0-5.0
+            'special' => 0,   // INC, DRP
+        ];
+
+        foreach ($enrolledSubjects as $enrolled) {
+            $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
+            
+            if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+                $gradeDistribution['excellent']++;
+            } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
+                $gradeDistribution['good']++;
+            } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
+                $gradeDistribution['fair']++;
+            } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+                $gradeDistribution['passing']++;
+            } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+                $gradeDistribution['failing']++;
+            } elseif ($enrolled->grade === 'INC' || $enrolled->grade === 'DRP') {
+                $gradeDistribution['special']++;
+            }
+        }
+
+        // Get recent enrolled subjects (last 5)
+        $recentSubjects = $enrolledSubjects->take(5);
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
             'sem',
             'hasEnrolledSubjects',
             'availableSubjects',
-            'studentID'
+            'studentID',
+            'student',
+            // 'address',
+            'hasEnrolledSubjects',
+        
+            // Real data for dashboard
+            'gwa',
+            'currentYearGWA',
+            'totalSubjects',
+            'totalUnits',
+            'currentYearSubjects',
+            'currentYearUnits',
+            'enrolledSubjects',
+            'recentSubjects',
+            'gradeDistribution'
         ));
 
     }
