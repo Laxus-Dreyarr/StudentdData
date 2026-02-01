@@ -719,6 +719,33 @@ class StudentController extends Controller
         // Get recent enrolled subjects (last 5)
         $recentSubjects = $enrolledSubjects->take(5);
 
+        $academicProgress = $enrolledSubjects->map(function($enrolled) {
+            $subject = $enrolled->subject;
+            $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
+            
+            // Calculate progress percentage
+            $progressPercentage = 0;
+            if ($numericGrade >= 1.0 && $numericGrade <= 5.0) {
+                // For grades 1.0-5.0: 1.0 = 100%, 5.0 = 0%
+                $progressPercentage = 100 - (($numericGrade - 1.0) / 4.0 * 100);
+            } elseif ($enrolled->grade === 'PASS') {
+                $progressPercentage = 100;
+            } elseif ($enrolled->grade === 'FAIL') {
+                $progressPercentage = 0;
+            }
+            
+            return [
+                'subject_name' => $subject->name ?? 'Unknown Subject',
+                'subject_code' => $subject->code ?? 'N/A',
+                'grade' => $enrolled->grade,
+                'numeric_grade' => $numericGrade,
+                'progress_percentage' => $progressPercentage,
+                'color' => $this->getGradeColor($numericGrade),
+                'units' => $subject->units ?? 3,
+                'status' => $this->getGradeStatus($numericGrade)
+            ];
+        })->sortByDesc('numeric_grade')->take(4);
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -739,9 +766,47 @@ class StudentController extends Controller
             'currentYearUnits',
             'enrolledSubjects',
             'recentSubjects',
-            'gradeDistribution'
+            'gradeDistribution',
+            'academicProgress'
         ));
 
+    }
+
+    // Add to StudentController.php
+    private function getGradeStatus($numericGrade)
+    {
+        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+            return 'Excellent';
+        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
+            return 'Very Good';
+        } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
+            return 'Good';
+        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+            return 'Satisfactory';
+        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+            return 'Needs Improvement';
+        } else {
+            return 'Pending';
+        }
+    }
+
+
+    // Add this method to StudentController.php
+    private function getGradeColor($numericGrade)
+    {
+        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+            return '#28a745'; // Green - Excellent
+        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
+            return '#17a2b8'; // Cyan - Very Good
+        } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
+            return '#ffc107'; // Yellow - Good
+        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+            return '#fd7e14'; // Orange - Satisfactory
+        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+            return '#dc3545'; // Red - Failing
+        } else {
+            return '#6c757d'; // Gray - Special grades
+        }
     }
 
 

@@ -293,50 +293,79 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h5 class="card-title"><i class="fas fa-chart-bar"></i> Academic Progress</h5>
-                            <a href="#" class="card-link">Details <i class="fas fa-chevron-right"></i></a>
+                            @if($hasEnrolledSubjects)
+                                <a href="#" class="card-link" data-bs-toggle="modal" data-bs-target="#allSubjectsModal">Details <i class="fas fa-chevron-right"></i></a>
+                            @else
+                                <span class="card-link disabled">Details <i class="fas fa-chevron-right"></i></span>
+                            @endif
                         </div>
                         
                         <div class="progress-chart">
-                            <div class="progress-item">
-                                <div class="progress-header">
-                                    <span class="progress-label">Web Development</span>
-                                    <span class="progress-value">92%</span>
+                            @if($hasEnrolledSubjects && count($academicProgress) > 0)
+                                @foreach($academicProgress as $progress)
+                                    <div class="progress-item">
+                                        <div class="progress-header">
+                                            <span class="progress-label" title="{{ $progress['subject_name'] }}">
+                                                {{ Str::limit($progress['subject_name'], 20) }}
+                                            </span>
+                                            <span class="progress-value">
+                                                @if($progress['numeric_grade'] > 0)
+                                                    {{ $progress['grade'] }}
+                                                @else
+                                                    {{ $progress['grade'] }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <!-- This should be in your HTML/template file -->
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" 
+                                                style="width: {{ $progress['progress_percentage'] }}%; 
+                                                        background-color: {{ $progress['color'] }}; 
+                                                        opacity: {{ $progress['numeric_grade'] <= 3.0 ? '1' : '0.7' }};">
+                                            </div>
+                                        </div>
+
+                                        <div class="progress-meta small text-muted mt-1">
+                                            <span>{{ $progress['subject_code'] }}</span>
+                                            <span class="float-end">{{ $progress['units'] }} units</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="text-center py-4">
+                                    <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
+                                    <h6 class="text-gray-500">No Academic Data</h6>
+                                    <p class="text-muted small">
+                                        @if($hasEnrolledSubjects)
+                                            No graded subjects available for progress tracking.
+                                        @else
+                                            Enroll in subjects to see your academic progress.
+                                        @endif
+                                    </p>
                                 </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 92%; background-color: var(--success);"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="progress-item">
-                                <div class="progress-header">
-                                    <span class="progress-label">Database Systems</span>
-                                    <span class="progress-value">88%</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 88%; background-color: var(--primary);"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="progress-item">
-                                <div class="progress-header">
-                                    <span class="progress-label">Data Structures</span>
-                                    <span class="progress-value">85%</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 85%; background-color: var(--warning);"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="progress-item">
-                                <div class="progress-header">
-                                    <span class="progress-label">Software Engineering</span>
-                                    <span class="progress-value">90%</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 90%; background-color: var(--accent);"></div>
-                                </div>
-                            </div>
+                            @endif
                         </div>
+                        
+                        @if($hasEnrolledSubjects && $academicProgress->count() > 0)
+                            <div class="card-footer bg-transparent border-top-0 pt-0">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle text-info"></i> 
+                                            Showing {{ $academicProgress->count() }} of {{ $enrolledSubjects->count() }} subjects
+                                        </small>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <small>
+                                            <span class="badge bg-success">1.0-1.5</span>
+                                            <span class="badge bg-primary">1.6-2.5</span>
+                                            <span class="badge bg-warning">2.6-3.0</span>
+                                            <span class="badge bg-danger">4.0-5.0</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 

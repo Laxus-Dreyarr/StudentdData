@@ -1134,6 +1134,79 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: center;
 }
 
+/* Academic Progress Styles */
+.progress-item {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.progress-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.progress-label {
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.progress-value {
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 40px;
+    text-align: right;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.progress-meta {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* Grade badge styles for progress section */
+.progress-item .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    margin-right: 0.2rem;
+}
+
+/* Hover effects for progress items */
+.progress-item:hover .progress-label {
+    color: #2196f3;
+}
+
+.progress-item:hover .progress-bar {
+    background-color: #dee2e6;
+}
+
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1270,6 +1343,18 @@ h1, h2, h3, h4, h5, h6 {
     .selected-subjects-summary .row > div {
         margin-bottom: 10px;
     }
+
+    .progress-label {
+        font-size: 0.9rem;
+    }
+    
+    .progress-value {
+        font-size: 0.9rem;
+    }
+    
+    .progress-meta {
+        font-size: 0.7rem;
+    }
 }
 
 @media (max-width: 576px) {
@@ -1289,6 +1374,61 @@ h1, h2, h3, h4, h5, h6 {
     .dashboard-card {
         padding: 20px;
     }
+}
+
+/* Legend for grade colors */
+.grade-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.grade-legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+}
+
+.grade-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 4px;
+}
+
+/* Tooltip for subject names */
+[title] {
+    position: relative;
+    cursor: help;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: 1000;
+    margin-bottom: -5px;
 }
 
 #selectedSubjectsList .subject-item {
