@@ -35,11 +35,6 @@ Route::prefix('/exe')->group(function (){
     Route::get('/user', [StudentController::class, 'user']);
 });
 
-// GET route for convenience
-// Route::get('/logout', function() {
-//     return view('logout-redirect'); // Create this view
-// });
-
 // Protected routes (require authentication)
 Route::middleware(['student.auth'])->group(function () {
     Route::get('/student-dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
@@ -48,6 +43,11 @@ Route::middleware(['student.auth'])->group(function () {
     Route::post('/student/enroll-subjects', [StudentController::class, 'enrollSubjects'])->name('student.enrollSubjects');
     // Add other protected routes here
 });
+
+// GET route for convenience
+// Route::get('/logout', function() {
+//     return view('logout-redirect'); // Create this view
+// });
 
 // Show verification form (already exists)
 Route::get('/register_student_account', function () {

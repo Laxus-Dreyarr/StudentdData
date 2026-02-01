@@ -567,6 +567,71 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
+        //------ Prevent modal from being closed accidentally -------
+        function preventModalClosing() {
+            const modal = document.getElementById('enrollmentModal');
+            
+            // Remove any existing event listeners that might close the modal
+            if (modal) {
+                // Prevent Bootstrap from adding close functionality
+                modal.setAttribute('data-bs-backdrop', 'static');
+                modal.setAttribute('data-bs-keyboard', 'false');
+                
+                // Remove any close buttons that might exist
+                document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+                    btn.style.display = 'none';
+                });
+                
+                // Prevent closing by ESC key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && modal.classList.contains('show')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showWarningMessage();
+                        return false;
+                    }
+                });
+                
+                // Prevent clicking outside to close
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showWarningMessage();
+                        return false;
+                    }
+                });
+            }
+        }
+
+        // Show warning message if user tries to close
+        function showWarningMessage() {
+            // Create a warning alert
+            const warningAlert = document.createElement('div');
+            warningAlert.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+            warningAlert.style.cssText = `
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+            `;
+            warningAlert.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Attention:</strong> You must complete subject enrollment before proceeding.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(warningAlert);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (warningAlert.parentNode) {
+                    warningAlert.remove();
+                }
+            }, 5000);
+        }
+        // -----------------
+
         // 
         function handleEnrollment() {
             // Initialize variables
