@@ -929,12 +929,12 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
         </main>
 
         @if(!$hasEnrolledSubjects && !empty($availableSubjects))
-        <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true">
+        <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="enrollmentModalLabel">Select Subjects</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <!-- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button> -->
                     </div>
                     <!--  -->
                     <div class="modal-body">
@@ -947,9 +947,9 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         {{-- View Toggle Buttons --}}
                         <div class="mb-4">
                             <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary active" id="tableViewBtn">
+                                <!-- <button type="button" class="btn btn-outline-primary active" id="tableViewBtn">
                                     <i class="fas fa-table"></i> Table View
-                                </button>
+                                </button> -->
                                 <!-- <button type="button" class="btn btn-outline-primary" id="cardViewBtn">
                                     <i class="fas fa-th-large"></i> Card View
                                 </button> -->
@@ -1309,7 +1309,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     </div>
                     <!--  -->
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button> -->
                         <button type="button" class="btn btn-primary" id="submitEnrollment" disabled>
                             <i class="fas fa-check"></i> Submit Enrollment
                         </button>
