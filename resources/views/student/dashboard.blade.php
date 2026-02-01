@@ -933,7 +933,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="enrollmentModalLabel">Enroll Subjects</h5>
+                        <h5 class="modal-title" id="enrollmentModalLabel">Select Subjects</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <!--  -->
@@ -941,7 +941,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         <p class="mb-4">Please select the subjects you have already accomplished and provide your grades.</p>
                         
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> You can either select subjects from the dropdowns or use the search bar to find specific subjects.
+                            <i class="fas fa-info-circle"></i> You can use the search bar to find specific subjects.
                         </div>
                         
                         {{-- View Toggle Buttons --}}
@@ -950,12 +950,12 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                 <button type="button" class="btn btn-outline-primary active" id="tableViewBtn">
                                     <i class="fas fa-table"></i> Table View
                                 </button>
-                                <button type="button" class="btn btn-outline-primary" id="dropdownViewBtn">
+                                <!-- <button type="button" class="btn btn-outline-primary" id="cardViewBtn">
                                     <i class="fas fa-th-large"></i> Card View
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="quickAddBtnToggle">
+                                </button> -->
+                                <!-- <button type="button" class="btn btn-outline-primary" id="quickAddBtnToggle">
                                     <i class="fas fa-bolt"></i> Quick Add
-                                </button>
+                                </button> -->
                             </div>
                         </div>
                         
@@ -997,9 +997,9 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                     Expand all
                                                 </label>
                                             </div>
-                                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="selectAllVisible">
+                                            <!-- <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="selectAllVisible">
                                                 <i class="fas fa-check-square"></i> Select all visible
-                                            </button>
+                                            </button> -->
                                         </div>
                                     </div>
                                 </div>
@@ -1269,12 +1269,12 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                 <h4 class="mb-0" id="totalUnitsCount">0</h4>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <!-- <div class="col-md-3">
                                             <div class="alert alert-warning">
                                                 <small>Grade Points</small>
                                                 <h4 class="mb-0" id="totalGradePoints">0.00</h4>
                                             </div>
-                                        </div>
+                                        </div> -->
                                         <div class="col-md-3">
                                             <div class="alert alert-primary">
                                                 <small>GWA</small>
