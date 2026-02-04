@@ -556,10 +556,6 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                 <div class="detail-label">Enrollment Status</div>
                                 <div class="detail-value">Regular Student</div>
                             </div>
-                            <div class="detail-item">
-                                <div class="detail-label">Academic Advisor</div>
-                                <div class="detail-value">Prof. Maria Santos</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -688,7 +684,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     <button class="btn-primary">Add/Drop Course</button>
                 </div>
                 
-                <div class="courses-grid">
+                <!-- <div class="courses-grid">
                     <div class="course-card">
                         <div class="course-header">
                             <div class="course-code">CSC 301</div>
@@ -766,124 +762,221 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             <button class="btn-outline" style="width: 100%;">View Course Details</button>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </section>
 
             <!-- Grades Content -->
             <section id="grades-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">Grades & Transcript</h2>
-                    <button class="btn-primary">Download Transcript</button>
+                    @if($hasEnrolledSubjects)
+                        <button class="btn-primary" id="downloadTranscript">
+                            <i class="fas fa-download"></i> Download Transcript
+                        </button>
+                    @endif
                 </div>
                 
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title"><i class="fas fa-chart-line"></i> Current Semester Grades</h5>
+                @if($hasEnrolledSubjects)
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Academic Grades</h5>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">Passing: 1.0-3.0</span>
+                                <span class="badge bg-danger">Failing: 4.0-5.0</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="grade-table">
+                                <thead>
+                                    <tr>
+                                        <th width="15%">Code</th>
+                                        <th width="40%">Subject Name</th>
+                                        <th width="15%">Units</th>
+                                        <th width="15%">Grade</th>
+                                        <th width="15%">Equivalent</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if(count($gradesTableData) > 0)
+                                        @foreach($gradesTableData as $grade)
+                                        <tr>
+                                            <td>
+                                                <strong>{{ $grade['subject_code'] }}</strong>
+                                            </td>
+                                            <td>
+                                                <div class="subject-name">{{ $grade['subject_name'] }}</div>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-light text-dark">{{ $grade['units'] }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="grade-value {{ $grade['color_class'] }}">
+                                                    {{ $grade['grade'] }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="grade-badge {{ $grade['color_class'] }}">
+                                                    {{ $grade['equivalent'] }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    @else
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">
+                                                <i class="fas fa-book fa-3x text-gray-300 mb-3"></i>
+                                                <h6 class="text-gray-500">No Grade Data Available</h6>
+                                                <p class="text-muted">You haven't enrolled in any subjects yet.</p>
+                                            </td>
+                                        </tr>
+                                    @endif
+                                </tbody>
+                                @if(count($gradesTableData) > 0)
+                                <tfoot>
+                                    <tr class="table-light">
+                                        <td colspan="2" class="text-end">
+                                            <strong>Total:</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <strong>{{ $totalUnits }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <strong>GWA: {{ number_format($gwa, 2) }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <strong>{{ $academicStanding }}</strong>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                                @endif
+                            </table>
+                        </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="grade-table">
-                            <thead>
-                                <tr>
-                                    <th>Course</th>
-                                    <th>Instructor</th>
-                                    <th>Prelim</th>
-                                    <th>Midterm</th>
-                                    <th>Final</th>
-                                    <th>Overall</th>
-                                    <th>Equivalent</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Web Development</td>
-                                    <td>Prof. Garcia</td>
-                                    <td>92%</td>
-                                    <td>95%</td>
-                                    <td>89%</td>
-                                    <td>92%</td>
-                                    <td><span class="grade-badge grade-A">A</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Database Systems</td>
-                                    <td>Prof. Santos</td>
-                                    <td>85%</td>
-                                    <td>90%</td>
-                                    <td>89%</td>
-                                    <td>88%</td>
-                                    <td><span class="grade-badge grade-B">B+</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Software Engineering</td>
-                                    <td>Prof. Reyes</td>
-                                    <td>88%</td>
-                                    <td>92%</td>
-                                    <td>90%</td>
-                                    <td>90%</span></td>
-                                    <td><span class="grade-badge grade-A">A-</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Data Structures</td>
-                                    <td>Prof. Cruz</td>
-                                    <td>82%</td>
-                                    <td>85%</td>
-                                    <td>88%</td>
-                                    <td>85%</td>
-                                    <td><span class="grade-badge grade-B">B</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Networking</td>
-                                    <td>Prof. Lim</td>
-                                    <td>87%</td>
-                                    <td>84%</td>
-                                    <td>86%</td>
-                                    <td>86%</td>
-                                    <td><span class="grade-badge grade-B">B+</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title"><i class="fas fa-calculator"></i> GPA Summary</h5>
-                    </div>
-                    <div class="dashboard-grid" style="margin-bottom: 0;">
-                        <div>
-                            <div class="welcome-stat">
-                                <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
-                                    <i class="fas fa-chart-line"></i>
+                    
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h5 class="card-title"><i class="fas fa-calculator"></i> GPA Summary</h5>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" data-filter="all">All Semesters</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="current">Current Year</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="previous">Previous Years</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="dashboard-grid" style="margin-bottom: 0;">
+                            <div>
+                                <div class="welcome-stat">
+                                    <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3>{{ number_format($currentYearGWA, 2) }}</h3>
+                                        <p>Current Year GWA</p>
+                                        <small class="text-muted">{{ $currentYearSubjects }} subjects</small>
+                                    </div>
                                 </div>
-                                <div class="stat-info">
-                                    <h3>3.78</h3>
-                                    <p>Current Semester GPA</p>
+                            </div>
+                            <div>
+                                <div class="welcome-stat">
+                                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3>{{ number_format($gwa, 2) }}</h3>
+                                        <p>Cumulative GWA</p>
+                                        <small class="text-muted">{{ $totalSubjects }} total subjects</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="welcome-stat">
+                                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">
+                                        <i class="fas fa-award"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h3>{{ $academicStanding }}</h3>
+                                        <p>Academic Standing</p>
+                                        <small class="text-muted">
+                                            @if(strpos($academicStanding, 'Lister') !== false)
+                                                <i class="fas fa-star text-warning"></i> Excellent
+                                            @else
+                                                {{ $student->status }}
+                                            @endif
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div>
-                            <div class="welcome-stat">
-                                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                                    <i class="fas fa-chart-bar"></i>
+                        
+                        {{-- Grade Distribution --}}
+                        @if(isset($gradeDistribution))
+                        <div class="mt-4">
+                            <h6 class="mb-3">Grade Distribution</h6>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="progress" style="height: 20px;">
+                                        @php
+                                            $totalGrades = array_sum($gradeDistribution);
+                                            $excellentPercent = ($totalGrades > 0) ? ($gradeDistribution['excellent'] / $totalGrades) * 100 : 0;
+                                            $goodPercent = ($totalGrades > 0) ? ($gradeDistribution['good'] / $totalGrades) * 100 : 0;
+                                            $fairPercent = ($totalGrades > 0) ? ($gradeDistribution['fair'] / $totalGrades) * 100 : 0;
+                                            $passingPercent = ($totalGrades > 0) ? ($gradeDistribution['passing'] / $totalGrades) * 100 : 0;
+                                            $failingPercent = ($totalGrades > 0) ? ($gradeDistribution['failing'] / $totalGrades) * 100 : 0;
+                                        @endphp
+                                        <div class="progress-bar bg-success" style="width: {{ $excellentPercent }}%" 
+                                            title="Excellent (1.0-1.5): {{ $gradeDistribution['excellent'] }}"></div>
+                                        <div class="progress-bar bg-info" style="width: {{ $goodPercent }}%" 
+                                            title="Good (1.6-2.0): {{ $gradeDistribution['good'] }}"></div>
+                                        <div class="progress-bar bg-warning" style="width: {{ $fairPercent }}%" 
+                                            title="Fair (2.1-2.5): {{ $gradeDistribution['fair'] }}"></div>
+                                        <div class="progress-bar bg-secondary" style="width: {{ $passingPercent }}%" 
+                                            title="Passing (2.6-3.0): {{ $gradeDistribution['passing'] }}"></div>
+                                        <div class="progress-bar bg-danger" style="width: {{ $failingPercent }}%" 
+                                            title="Failing (4.0-5.0): {{ $gradeDistribution['failing'] }}"></div>
+                                    </div>
                                 </div>
-                                <div class="stat-info">
-                                    <h3>3.65</h3>
-                                    <p>Cumulative GPA</p>
+                                <div class="col-md-4">
+                                    <div class="text-end small">
+                                        <div class="mb-1">
+                                            <span class="badge bg-success">1.0-1.5:</span> {{ $gradeDistribution['excellent'] }}
+                                        </div>
+                                        <div class="mb-1">
+                                            <span class="badge bg-info">1.6-2.0:</span> {{ $gradeDistribution['good'] }}
+                                        </div>
+                                        <div class="mb-1">
+                                            <span class="badge bg-warning">2.1-2.5:</span> {{ $gradeDistribution['fair'] }}
+                                        </div>
+                                        <div class="mb-1">
+                                            <span class="badge bg-secondary">2.6-3.0:</span> {{ $gradeDistribution['passing'] }}
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-danger">4.0-5.0:</span> {{ $gradeDistribution['failing'] }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div>
-                            <div class="welcome-stat">
-                                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">
-                                    <i class="fas fa-award"></i>
-                                </div>
-                                <div class="stat-info">
-                                    <h3>Dean's Lister</h3>
-                                    <p>Academic Standing</p>
-                                </div>
-                            </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Academic Grades</h5>
+                        </div>
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-graduation-cap fa-4x text-gray-300 mb-4"></i>
+                            <h4 class="text-gray-500">No Grades Available</h4>
+                            <p class="text-muted mb-4">You need to enroll in subjects first to see your grades and GPA.</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#enrollmentModal">
+                                <i class="fas fa-plus-circle"></i> Enroll Subjects Now
+                            </button>
                         </div>
                     </div>
-                </div>
+                @endif
             </section>
 
             <!-- Placeholder for other sections (assignments, exams, etc.) -->
