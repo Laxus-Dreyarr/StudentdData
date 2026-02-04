@@ -41,6 +41,18 @@ Route::middleware(['student.auth'])->group(function () {
     Route::post('/student/logout', [StudentController::class, 'logout'])->name('student.logout');
 
     Route::post('/student/enroll-subjects', [StudentController::class, 'enrollSubjects'])->name('student.enrollSubjects');
+
+    // Scholastic warning routes
+    Route::get('/student/academic-status', [StudentController::class, 'getAcademicStatus']);
+    Route::post('/student/warnings/{warning}/acknowledge', [StudentController::class, 'acknowledgeWarning']);
+    Route::post('/student/check-delinquency', [StudentController::class, 'checkDelinquency']);
+    
+    // Incomplete grade completion
+    Route::post('/student/incomplete-grades/{id}/complete', [StudentController::class, 'completeIncompleteGrade']);
+    
+    // Probation management
+    Route::get('/student/probation-terms', [StudentController::class, 'getProbationTerms']);
+    Route::post('/student/probation/request-review', [StudentController::class, 'requestProbationReview']);
     // Add other protected routes here
 });
 

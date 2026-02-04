@@ -1482,5 +1482,6 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
+    <script src="{{ asset('js/function/student/scholastic-warnings.js') }}"></script>
 </body>
 </html>
