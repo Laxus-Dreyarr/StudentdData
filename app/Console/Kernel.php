@@ -5,6 +5,9 @@ namespace App\Console;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
+use App\Services\ScholasticDelinquencyService;
+use App\Models\Student;
+
 class Kernel extends ConsoleKernel
 {
     /**
@@ -23,10 +26,21 @@ class Kernel extends ConsoleKernel
      * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
+    // protected function schedule(Schedule $schedule)
+    // {
+    //     // Schedule the command to run daily at 8:00 AM
+    //     $schedule->command('emails:send-qualified')->dailyAt('08:00');
+    // }
+
     protected function schedule(Schedule $schedule)
     {
-        // Schedule the command to run daily at 8:00 AM
-        $schedule->command('emails:send-qualified')->dailyAt('08:00');
+        $schedule->call(function () {
+            $service = new ScholasticDelinquencyService();
+            $students = Student::where('status', 'Officially Enrolled')->get();
+            foreach ($students as $student) {
+                $service->checkStudentDelinquency($student->id);
+            }
+        })->monthly(); // Run monthly to check grades
     }
 
     /**

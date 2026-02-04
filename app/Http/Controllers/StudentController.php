@@ -30,6 +30,11 @@ use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use DateTime;
 
+use App\Services\ScholasticDelinquencyService;
+use App\Models\StudentWarning;
+use App\Models\StudentProbation;
+use App\Models\IncompleteGrade;
+
 class StudentController extends Controller
 {
     public function register(Request $request)
@@ -466,6 +471,23 @@ class StudentController extends Controller
         $user->last_login = Carbon::now();
         $user->save();
 
+        // Get the student record
+        $studentInfo = UserInfo::where('user_id', $user->id)->first();
+        $student = null;
+        
+        if ($studentInfo) {
+            $student = Student::where('student_id', $studentInfo->id)->first();
+            
+            // Run scholastic delinquency check
+            if ($student) {
+                $this->runDelinquencyCheck($student->id);
+                
+                // Update last login
+                $user->last_login = now();
+                $user->save();
+            }
+        }
+
         // Prepare response data
         // $responseData = [
         //     'success' => true,
@@ -486,6 +508,26 @@ class StudentController extends Controller
 
 
         return response()->json($responseData);
+    }
+
+
+    private function runDelinquencyCheck($studentId)
+    {
+        try {
+            $service = new ScholasticDelinquencyService();
+            $result = $service->checkStudentDelinquency($studentId);
+            
+            // Log the check
+            Log::info("Delinquency check run for student ID: {$studentId}", [
+                'warnings_issued' => count($result['warnings_issued'] ?? []),
+                'timestamp' => now()
+            ]);
+            
+            return $result;
+        } catch (\Exception $e) {
+            Log::error("Error running delinquency check for student {$studentId}: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -766,6 +808,23 @@ class StudentController extends Controller
 
         $academicStanding = $this->getAcademicStanding($gwa);
 
+
+        // Run delinquency check (but less frequently - maybe once per day)
+        // $this->runConditionalDelinquencyCheck($student);
+        
+        // Get active warnings for display
+        $activeWarnings = \App\Models\StudentWarning::where('student_id', $student->id)
+            ->where('status', 'Active')
+            ->where(function($query) {
+                $query->whereNull('expiry_date')
+                    ->orWhere('expiry_date', '>=', now());
+            })
+            ->orderBy('issued_date', 'desc')
+            ->get();
+        
+        $hasActiveWarnings = $activeWarnings->count() > 0;
+        $warningCount = $activeWarnings->count();
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -789,9 +848,30 @@ class StudentController extends Controller
             'gradeDistribution',
             'academicProgress',
             'gradesTableData',
-            'academicStanding'
+            'academicStanding',
+
+            'activeWarnings',
+            'hasActiveWarnings',
+            'warningCount'
         ));
 
+    }
+
+    private function runConditionalDelinquencyCheck($student)
+    {
+        
+        $today = now()->format('Y-m-d');
+        $lastCheck = $student->last_delinquency_check ? 
+                    $student->last_delinquency_check->format('Y-m-d') : null;
+        
+        // Check if we need to run it today
+        if ($lastCheck !== $today) {
+            $this->runDelinquencyCheck($student->id);
+            
+            // Update last check date
+            $student->last_delinquency_check = now();
+            $student->save();
+        }
     }
 
     // Add to StudentController.php
@@ -1023,6 +1103,143 @@ class StudentController extends Controller
             'success' => false,
             'message' => 'Not authenticated'
         ], 401);
+    }
+
+    public function getAcademicStatus(Request $request)
+    {
+        $student = $request->user();
+        $studentId = $student->id;
+        
+        // Get active warnings
+        $activeWarnings = StudentWarning::where('student_id', $studentId)
+            ->where('status', 'Active')
+            ->where(function($query) {
+                $query->whereNull('expiry_date')
+                    ->orWhere('expiry_date', '>=', now());
+            })
+            ->orderBy('issued_date', 'desc')
+            ->get()
+            ->map(function($warning) {
+                return [
+                    'id' => $warning->id,
+                    'warning_type' => $warning->warning_type,
+                    'reason' => $warning->reason,
+                    'issued_date' => $warning->issued_date->format('Y-m-d'),
+                    'expiry_date' => $warning->expiry_date ? $warning->expiry_date->format('Y-m-d') : null,
+                    'severity' => $this->getWarningSeverity($warning->warning_type)
+                ];
+            });
+        
+        // Get probation status
+        $probation = StudentProbation::where('student_id', $studentId)
+            ->where('status', 'Active')
+            ->first();
+        
+        $probationStatus = null;
+        if ($probation) {
+            $probationStatus = [
+                'status' => $probation->status,
+                'start_date' => $probation->start_date->format('Y-m-d'),
+                'end_date' => $probation->end_date ? $probation->end_date->format('Y-m-d') : null,
+                'reason' => $probation->reason,
+                'credit_limit' => $probation->credit_limit
+            ];
+        }
+        
+        // Get incomplete grades
+        $incompleteGrades = IncompleteGrade::where('student_id', $studentId)
+            ->where('status', 'Pending')
+            ->with('subject')
+            ->get()
+            ->map(function($inc) {
+                $deadline = $inc->completion_deadline;
+                $daysRemaining = $deadline ? now()->diffInDays($deadline, false) : null;
+                
+                return [
+                    'id' => $inc->id,
+                    'subject_code' => $inc->subject->code ?? 'Unknown',
+                    'subject_name' => $inc->subject->name ?? '',
+                    'date_issued' => $inc->date_issued->format('Y-m-d'),
+                    'completion_deadline' => $deadline ? $deadline->format('Y-m-d') : null,
+                    'days_remaining' => $daysRemaining,
+                    'status' => $inc->status
+                ];
+            });
+        
+        // Academic summary
+        $enrolledSubjects = \App\Models\EnrolledSubjects::where('student_id', $studentId)
+            ->where('sy', '2025-2026')
+            ->with('subject')
+            ->get();
+        
+        $failedSubjects = $enrolledSubjects->where('grade', '5.0')->count();
+        $incompleteCount = $enrolledSubjects->where('grade', 'INC')->count();
+        
+        $grades = $enrolledSubjects->whereNotNull('grade')
+            ->where('grade', '!=', 'INC')
+            ->pluck('grade')
+            ->map(function($grade) {
+                return floatval($grade);
+            });
+        
+        $averageGrade = $grades->isNotEmpty() ? $grades->avg() : 0;
+        
+        $academicSummary = [
+            'failed_subjects' => $failedSubjects,
+            'incomplete_grades' => $incompleteCount,
+            'average_grade' => $averageGrade,
+            'warning_count' => $activeWarnings->count()
+        ];
+        
+        return response()->json([
+            'active_warnings' => $activeWarnings,
+            'probation_status' => $probationStatus,
+            'incomplete_grades' => $incompleteGrades,
+            'academic_summary' => $academicSummary,
+            'last_checked' => now()->format('Y-m-d H:i:s')
+        ]);
+    }
+
+    public function acknowledgeWarning(Request $request, $warningId)
+    {
+        $student = $request->user();
+        
+        $warning = StudentWarning::where('id', $warningId)
+            ->where('student_id', $student->id)
+            ->first();
+        
+        if (!$warning) {
+            return response()->json(['error' => 'Warning not found'], 404);
+        }
+        
+        // For now, just mark as acknowledged (in a real system, you might track acknowledgment separately)
+        // We'll just return success for demo purposes
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Warning acknowledged'
+        ]);
+    }
+
+    public function checkDelinquency(Request $request)
+    {
+        $student = $request->user();
+        $service = new ScholasticDelinquencyService();
+        
+        $result = $service->checkStudentDelinquency($student->id);
+        
+        return response()->json($result);
+    }
+
+    private function getWarningSeverity($warningType)
+    {
+        $severityMap = [
+            'First Warning' => 'low',
+            'Second Warning' => 'medium',
+            'Final Warning' => 'high'
+        ];
+        
+        return $severityMap[$warningType] ?? 'medium';
     }
 
     /**
