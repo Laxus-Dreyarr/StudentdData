@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class IncompleteGrade extends Model
 {
+    protected $table = 'incomplete_grades';
+    protected $primaryKey = 'id';
+    public $timestamps = false;
+
     protected $fillable = [
         'student_id', 'subject_id', 'grade',
         'date_issued', 'completion_deadline',

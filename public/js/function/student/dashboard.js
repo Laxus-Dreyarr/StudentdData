@@ -1209,6 +1209,505 @@ function showToast(message, type = 'success') {
             };
         }
         // 
+
+        // public/js/function/student/dashboard.js
+// Add these functions to your existing file
+
+// Initialize warning system
+function initializeWarningSystem() {
+    // Check if we have any warnings
+    if (!document.querySelector('.warning-item')) {
+        return;
+    }
+    
+    console.log('Initializing warning system...');
+    
+    // Set up event listeners for warning actions
+    setupWarningEventListeners();
+    
+    // Check for new warnings periodically (every 5 minutes)
+    setInterval(checkForNewWarnings, 5 * 60 * 1000);
+    
+    // Show initial warning count in badge
+    updateWarningBadge();
+}
+
+// Set up event listeners for warning actions
+function setupWarningEventListeners() {
+    // Acknowledge single warning
+    document.addEventListener('click', function(e) {
+        // Acknowledge button
+        if (e.target.closest('.btn-acknowledge')) {
+            const button = e.target.closest('.btn-acknowledge');
+            const warningId = button.dataset.warningId;
+            acknowledgeWarning(warningId, button);
+        }
+        
+        // View details button
+        if (e.target.closest('.btn-view-details')) {
+            const button = e.target.closest('.btn-view-details');
+            const warningId = button.dataset.warningId;
+            showWarningDetails(warningId);
+        }
+        
+        // Submit completion for incomplete grade
+        if (e.target.closest('.btn-submit-completion')) {
+            const button = e.target.closest('.btn-submit-completion');
+            const incompleteId = button.dataset.incompleteId;
+            submitCompletion(incompleteId);
+        }
+        
+        // View probation terms
+        if (e.target.closest('.btn-view-probation')) {
+            showProbationTermsModal();
+        }
+        
+        // Request probation review
+        if (e.target.closest('.btn-request-review')) {
+            requestProbationReview();
+        }
+        
+        // Acknowledge all warnings
+        if (e.target.closest('#acknowledgeAllWarnings')) {
+            acknowledgeAllWarnings();
+        }
+    });
+}
+
+// Acknowledge a single warning
+function acknowledgeWarning(warningId, button) {
+    if (!button || !warningId) return;
+    
+    const originalText = button.innerHTML;
+    button.classList.add('btn-loading');
+    button.disabled = true;
+    
+    fetch(`/student/warnings/${warningId}/acknowledge`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the warning item from UI
+            const warningItem = document.querySelector(`[data-warning-id="${warningId}"]`);
+            if (warningItem) {
+                warningItem.style.opacity = '0.5';
+                warningItem.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    warningItem.remove();
+                    updateWarningBadge();
+                    showNotification('Warning acknowledged', 'success');
+                    
+                    // Refresh the announcements list if no warnings left
+                    if (!document.querySelector('.warning-item')) {
+                        location.reload();
+                    }
+                }, 300);
+            }
+        } else {
+            showNotification(data.message || 'Failed to acknowledge warning', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error acknowledging warning:', error);
+        showNotification('Network error. Please try again.', 'error');
+    })
+    .finally(() => {
+        if (button) {
+            button.classList.remove('btn-loading');
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    });
+}
+
+// Acknowledge all warnings
+function acknowledgeAllWarnings() {
+    const acknowledgeAllBtn = document.getElementById('acknowledgeAllWarnings');
+    if (!acknowledgeAllBtn) return;
+    
+    const originalText = acknowledgeAllBtn.innerHTML;
+    acknowledgeAllBtn.classList.add('btn-loading');
+    acknowledgeAllBtn.disabled = true;
+    
+    // Get all warning IDs
+    const warningItems = document.querySelectorAll('.warning-item');
+    const warningIds = Array.from(warningItems).map(item => item.dataset.warningId);
+    
+    if (warningIds.length === 0) {
+        showNotification('No warnings to acknowledge', 'info');
+        acknowledgeAllBtn.classList.remove('btn-loading');
+        acknowledgeAllBtn.disabled = false;
+        acknowledgeAllBtn.innerHTML = originalText;
+        return;
+    }
+    
+    fetch('/student/warnings/acknowledge-all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ warning_ids: warningIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Fade out all warnings
+            warningItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.transition = 'opacity 0.3s';
+            });
+            
+            setTimeout(() => {
+                warningItems.forEach(item => item.remove());
+                updateWarningBadge();
+                showNotification(`Acknowledged ${data.count} warnings`, 'success');
+                
+                // Refresh the page to show regular announcements
+                location.reload();
+            }, 500);
+        } else {
+            showNotification(data.message || 'Failed to acknowledge warnings', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error acknowledging all warnings:', error);
+        showNotification('Network error. Please try again.', 'error');
+    })
+    .finally(() => {
+        acknowledgeAllBtn.classList.remove('btn-loading');
+        acknowledgeAllBtn.disabled = false;
+        acknowledgeAllBtn.innerHTML = originalText;
+    });
+}
+
+// Show warning details modal
+function showWarningDetails(warningId) {
+    // Fetch warning details
+    fetch(`/student/warnings/${warningId}/details`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.warning) {
+            const warning = data.warning;
+            
+            // Create modal HTML
+            const modalHtml = `
+                <div class="modal fade" id="warningDetailsModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content warning-details-modal">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    ${warning.warning_type}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="detail-item">
+                                    <div class="detail-label">Issued Date:</div>
+                                    <div class="detail-value">${warning.issued_date}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Reason:</div>
+                                    <div class="detail-value">${warning.reason}</div>
+                                </div>
+                                ${warning.expiry_date ? `
+                                <div class="detail-item">
+                                    <div class="detail-label">Valid Until:</div>
+                                    <div class="detail-value">${warning.expiry_date}</div>
+                                </div>
+                                ` : ''}
+                                ${warning.related_subjects ? `
+                                <div class="detail-item">
+                                    <div class="detail-label">Related Subjects:</div>
+                                    <div class="detail-value">${warning.related_subjects}</div>
+                                </div>
+                                ` : ''}
+                                <hr>
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle"></i> What This Means:</h6>
+                                    <p class="small mb-2">
+                                        ${getWarningExplanation(warning.warning_type)}
+                                    </p>
+                                    <p class="small mb-0">
+                                        <strong>Action Required:</strong> ${getRequiredAction(warning.warning_type)}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary btn-acknowledge-modal" 
+                                        data-warning-id="${warning.id}">
+                                    <i class="fas fa-check"></i> Acknowledge Warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to body and show it
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('warningDetailsModal'));
+            modal.show();
+            
+            // Add event listener for modal acknowledge button
+            document.getElementById('warningDetailsModal').addEventListener('click', function(e) {
+                if (e.target.closest('.btn-acknowledge-modal')) {
+                    const button = e.target.closest('.btn-acknowledge-modal');
+                    const warningId = button.dataset.warningId;
+                    modal.hide();
+                    
+                    // Find and click the original acknowledge button
+                    const originalBtn = document.querySelector(`.btn-acknowledge[data-warning-id="${warningId}"]`);
+                    if (originalBtn) {
+                        originalBtn.click();
+                    }
+                }
+            });
+            
+            // Clean up on close
+            document.getElementById('warningDetailsModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching warning details:', error);
+        showNotification('Failed to load warning details', 'error');
+    });
+}
+
+// Show probation terms modal
+function showProbationTermsModal() {
+    const modalHtml = `
+        <div class="modal fade" id="probationTermsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title">
+                            <i class="fas fa-file-contract me-2"></i> Academic Probation Terms
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Important Information</h6>
+                            <p class="mb-0">You are currently on academic probation based on Section 67.1 of the University Handbook.</p>
+                        </div>
+                        
+                        <h6>Terms & Conditions:</h6>
+                        <ol>
+                            <li>Your credit load for the next semester is limited (typically 12-15 units)</li>
+                            <li>You must pass all subjects in the next semester to have probation lifted</li>
+                            <li>You are required to meet with the academic advisor or guidance counselor</li>
+                            <li>You must submit a letter of recommitment to your studies</li>
+                            <li>Additional academic monitoring will be implemented</li>
+                            <li>Failure to comply with these terms may result in dismissal from the program</li>
+                        </ol>
+                        
+                        <div class="mt-4">
+                            <h6>What You Should Do:</h6>
+                            <ul>
+                                <li>Schedule a meeting with your academic advisor</li>
+                                <li>Develop a study plan for the next semester</li>
+                                <li>Consider reducing your extracurricular commitments</li>
+                                <li>Utilize academic support services (tutoring, counseling)</li>
+                                <li>Maintain regular communication with your instructors</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-life-ring"></i> Support Available:</h6>
+                            <ul class="mb-0">
+                                <li>Academic Advising Office</li>
+                                <li>Guidance and Counseling Center</li>
+                                <li>Learning Resource Center (tutoring)</li>
+                                <li>Student Success Program</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-success" id="scheduleAdvisorMeeting">
+                            <i class="fas fa-calendar-check"></i> Schedule Advisor Meeting
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body and show it
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('probationTermsModal'));
+    modal.show();
+    
+    // Add event listener for schedule meeting button
+    document.getElementById('probationTermsModal').addEventListener('click', function(e) {
+        if (e.target.closest('#scheduleAdvisorMeeting')) {
+            modal.hide();
+            showNotification('Redirecting to advisor scheduling...', 'info');
+            // In a real implementation, you would redirect to a scheduling page
+            setTimeout(() => {
+                window.open('/student/advisor-scheduling', '_blank');
+            }, 1000);
+        }
+    });
+    
+    // Clean up on close
+    document.getElementById('probationTermsModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Submit completion for incomplete grade
+function submitCompletion(incompleteId) {
+    showNotification('This feature is under development. Please contact your instructor directly.', 'info');
+}
+
+// Request probation review
+function requestProbationReview() {
+    fetch('/student/probation/request-review', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Review request submitted successfully', 'success');
+        } else {
+            showNotification(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error requesting review:', error);
+        showNotification('Network error. Please try again.', 'error');
+    });
+}
+
+// Check for new warnings
+function checkForNewWarnings() {
+    fetch('/student/check-new-warnings', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.has_new_warnings) {
+            showNotification('You have new academic warnings. Please check the announcements.', 'warning');
+            updateWarningBadge();
+        }
+    })
+    .catch(error => {
+        console.error('Error checking for new warnings:', error);
+    });
+}
+
+// Update warning badge in navigation
+function updateWarningBadge() {
+    const warningCount = document.querySelectorAll('.warning-item').length;
+    let badge = document.querySelector('.nav-warning-badge');
+    
+    // Create badge if it doesn't exist
+    if (!badge) {
+        const navItems = document.querySelectorAll('.nav-link');
+        const dashboardLink = Array.from(navItems).find(link => 
+            link.textContent.includes('Dashboard') || link.dataset.section === 'dashboard'
+        );
+        
+        if (dashboardLink) {
+            badge = document.createElement('span');
+            badge.className = 'badge bg-danger nav-warning-badge';
+            badge.style.position = 'absolute';
+            badge.style.top = '5px';
+            badge.style.right = '5px';
+            badge.style.fontSize = '0.6rem';
+            badge.style.padding = '0.2em 0.4em';
+            badge.style.minWidth = '18px';
+            dashboardLink.style.position = 'relative';
+            dashboardLink.appendChild(badge);
+        }
+    }
+    
+    // Update badge count
+    if (badge) {
+        badge.textContent = warningCount;
+        badge.style.display = warningCount > 0 ? 'inline-block' : 'none';
+    }
+}
+
+// Helper: Get warning explanation
+function getWarningExplanation(warningType) {
+    const explanations = {
+        'First Warning': 'This is an initial notice that your academic performance requires improvement. Based on Section 67.1.a.1.a of the University Handbook.',
+        'Second Warning': 'This indicates you have failed a major subject. Continued poor performance may lead to probation. Based on Section 67.1.a.1.b.',
+        'Final Warning': 'This is a final notice before probation. You have failed multiple subjects. Based on Section 67.1.a.1.c.'
+    };
+    
+    return explanations[warningType] || 'Academic performance warning.';
+}
+
+// Helper: Get required action
+function getRequiredAction(warningType) {
+    const actions = {
+        'First Warning': 'Improve academic performance and meet with instructor.',
+        'Second Warning': 'Meet with academic advisor and develop improvement plan.',
+        'Final Warning': 'Required meeting with department head and possible probation.'
+    };
+    
+    return actions[warningType] || 'Contact your academic advisor.';
+}
+
+// Show notification toast
+function showNotification(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    toast.show();
+    
+    // Remove toast after hide
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        this.remove();
+    });
+}
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -1216,6 +1715,8 @@ function showToast(message, type = 'success') {
             updateClassStatus();
             updateAssignmentDeadlines();
             setupSidebarNavigation();
+
+            initializeWarningSystem();
             
             // Update class status every minute
             setInterval(updateClassStatus, 60000);

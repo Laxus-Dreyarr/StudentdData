@@ -252,11 +252,176 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     <!-- Campus Announcements -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-bullhorn"></i> Campus Announcements</h5>
-                            <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
+                            <h5 class="card-title">
+                                <i class="fas fa-bullhorn"></i> 
+                                @if($hasActiveWarnings)
+                                    <span class="text-danger">Academic Warnings & Notices</span>
+                                    <span class="badge bg-danger ms-2">{{ $warningCount }}</span>
+                                @else
+                                    Campus Announcements
+                                @endif
+                            </h5>
+                            <div>
+                                @if($hasActiveWarnings)
+                                    <button class="btn btn-sm btn-outline-warning me-2" id="acknowledgeAllWarnings">
+                                        <i class="fas fa-check-circle"></i> Acknowledge All
+                                    </button>
+                                @endif
+                                <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
+                            </div>
                         </div>
                         
                         <div class="announcements-list">
+                            @if($hasActiveWarnings)
+                                {{-- Display Active Warnings First --}}
+                                @foreach($activeWarnings as $warning)
+                                    @php
+                                        $warningType = $warning->warning_type;
+                                        $warningClass = '';
+                                        $iconClass = '';
+                                        
+                                        if($warningType == 'First Warning') {
+                                            $warningClass = 'warning-low';
+                                            $iconClass = 'fa-exclamation-circle text-warning';
+                                        } elseif($warningType == 'Second Warning') {
+                                            $warningClass = 'warning-medium';
+                                            $iconClass = 'fa-exclamation-triangle text-warning';
+                                        } elseif($warningType == 'Final Warning') {
+                                            $warningClass = 'warning-high';
+                                            $iconClass = 'fa-times-circle text-danger';
+                                        }
+                                        
+                                        // Calculate days since issued
+                                        $issuedDate = \Carbon\Carbon::parse($warning->issued_date);
+                                        $daysAgo = $issuedDate->diffInDays(now());
+                                        $dateText = $daysAgo == 0 ? 'Today' : ($daysAgo == 1 ? 'Yesterday' : $daysAgo . ' days ago');
+                                    @endphp
+                                    
+                                    <div class="announcement-item {{ $warningClass }} warning-item" data-warning-id="{{ $warning->id }}">
+                                        <div class="announcement-header">
+                                            <div class="announcement-title">
+                                                <i class="fas {{ $iconClass }} me-2"></i>
+                                                <strong>{{ $warningType }}</strong>
+                                            </div>
+                                            <div class="announcement-date">{{ $dateText }}</div>
+                                        </div>
+                                        <div class="announcement-content">
+                                            {{ $warning->reason }}
+                                            @if($warning->expiry_date)
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="far fa-clock"></i> 
+                                                    Valid until: {{ \Carbon\Carbon::parse($warning->expiry_date)->format('M d, Y') }}
+                                                </small>
+                                            @endif
+                                        </div>
+                                        <div class="announcement-actions">
+                                            <button class="btn btn-sm btn-outline-success btn-acknowledge" data-warning-id="{{ $warning->id }}">
+                                                <i class="fas fa-check"></i> Acknowledge
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info btn-view-details" data-warning-id="{{ $warning->id }}">
+                                                <i class="fas fa-info-circle"></i> Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                
+                                {{-- Separator --}}
+                                <hr class="my-3">
+                            @endif
+                            
+                            {{-- Incomplete Grades Notices --}}
+                            @if($incompleteGrades && $incompleteGrades->count() > 0)
+                                @foreach($incompleteGrades as $inc)
+                                    @php
+                                        $daysRemaining = $inc['days_remaining'];
+                                        $warningClass = $daysRemaining !== null && $daysRemaining < 30 ? 'warning-medium' : 'warning-low';
+                                        $dateText = \Carbon\Carbon::parse($inc['completion_deadline'])->format('M d, Y');
+                                    @endphp
+                                    
+                                    <div class="announcement-item {{ $warningClass }}" data-incomplete-id="{{ $inc['id'] }}">
+                                        <div class="announcement-header">
+                                            <div class="announcement-title">
+                                                <i class="fas fa-hourglass-half text-info me-2"></i>
+                                                <strong>Incomplete Grade: {{ $inc['subject_code'] }}</strong>
+                                            </div>
+                                            <div class="announcement-date">Due: {{ $dateText }}</div>
+                                        </div>
+                                        <div class="announcement-content">
+                                            Subject: {{ $inc['subject_name'] }}
+                                            @if($daysRemaining !== null)
+                                                <br>
+                                                <small class="{{ $daysRemaining < 0 ? 'text-danger' : ($daysRemaining < 30 ? 'text-warning' : 'text-muted') }}">
+                                                    <i class="fas fa-clock"></i> 
+                                                    @if($daysRemaining < 0)
+                                                        <strong>OVERDUE by {{ abs($daysRemaining) }} days</strong>
+                                                    @elseif($daysRemaining == 0)
+                                                        <strong>Due today</strong>
+                                                    @else
+                                                        {{ $daysRemaining }} days remaining
+                                                    @endif
+                                                </small>
+                                            @endif
+                                        </div>
+                                        <div class="announcement-actions">
+                                            <button class="btn btn-sm btn-outline-primary btn-submit-completion" data-incomplete-id="{{ $inc['id'] }}">
+                                                <i class="fas fa-upload"></i> Submit
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                
+                                @if($incompleteGrades->count() > 0)
+                                    <hr class="my-3">
+                                @endif
+                            @endif
+                            
+                            {{-- Probation Notice --}}
+                            @if($hasProbation)
+                                @php
+                                    $probation = $probationStatus;
+                                    $startDate = \Carbon\Carbon::parse($probation->start_date);
+                                    $endDate = $probation->end_date ? \Carbon\Carbon::parse($probation->end_date) : null;
+                                    $daysInProbation = $startDate->diffInDays(now());
+                                    $dateText = $daysInProbation == 0 ? 'Today' : $daysInProbation . ' days ago';
+                                @endphp
+                                
+                                <div class="announcement-item warning-high">
+                                    <div class="announcement-header">
+                                        <div class="announcement-title">
+                                            <i class="fas fa-user-graduate text-danger me-2"></i>
+                                            <strong>Academic Probation</strong>
+                                        </div>
+                                        <div class="announcement-date">{{ $dateText }}</div>
+                                    </div>
+                                    <div class="announcement-content">
+                                        You are currently on academic probation.
+                                        @if($probation->reason)
+                                            <br><small>Reason: {{ $probation->reason }}</small>
+                                        @endif
+                                        @if($probation->credit_limit)
+                                            <br><small><i class="fas fa-info-circle"></i> Credit limit: {{ $probation->credit_limit }} units</small>
+                                        @endif
+                                        @if($endDate)
+                                            <br><small><i class="far fa-calendar"></i> Review date: {{ $endDate->format('M d, Y') }}</small>
+                                        @endif
+                                    </div>
+                                    <div class="announcement-actions">
+                                        <button class="btn btn-sm btn-outline-warning btn-view-probation">
+                                            <i class="fas fa-file-contract"></i> View Terms
+                                        </button>
+                                        @if($endDate && now()->diffInDays($endDate, false) < 30)
+                                            <button class="btn btn-sm btn-outline-info btn-request-review">
+                                                <i class="fas fa-handshake"></i> Request Review
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-3">
+                            @endif
+                            
+                            {{-- Regular Campus Announcements --}}
                             <div class="announcement-item">
                                 <div class="announcement-header">
                                     <div class="announcement-title">Final Exam Schedule</div>
