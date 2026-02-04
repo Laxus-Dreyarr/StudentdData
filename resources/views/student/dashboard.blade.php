@@ -1201,7 +1201,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                                             data-subject-id="{{ $subject->id }}" 
                                                                             disabled>
                                                                         <option value="">-- Select --</option>
-                                                                        @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                                        @for($i = 1.0; $i <= 3.1;$i += 0.1)
                                                                             @php
                                                                                 $grade = number_format($i, 1);
                                                                                 $gradeLabel = $grade;
