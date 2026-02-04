@@ -1675,6 +1675,103 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 1060;
 }
 
+/* Warning Item Styles */
+.announcement-item.warning-item {
+    border-left: 4px solid #dc3545;
+    background-color: rgba(220, 53, 69, 0.05);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    padding: 15px;
+    transition: all 0.3s;
+}
+
+.announcement-item.warning-low {
+    border-left-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.05);
+}
+
+.announcement-item.warning-medium {
+    border-left-color: #fd7e14;
+    background-color: rgba(253, 126, 20, 0.05);
+}
+
+.announcement-item.warning-high {
+    border-left-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.08);
+}
+
+.announcement-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.announcement-actions .btn {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.announcement-item .announcement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.announcement-item .announcement-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.announcement-item .announcement-content {
+    color: #495057;
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+.announcement-item .announcement-date {
+    font-size: 0.85rem;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+/* Warning indicator in card header */
+.card-header .badge {
+    font-size: 0.75rem;
+    padding: 0.25em 0.6em;
+}
+
+/* Alert badge for navigation */
+.nav-item .nav-warning-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.6rem;
+    padding: 0.2em 0.4em;
+    min-width: 18px;
+}
+
+/* Hover effects for warning items */
+.announcement-item.warning-item:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.announcement-item.warning-low:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.announcement-item.warning-medium:hover {
+    background-color: rgba(253, 126, 20, 0.1);
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1866,6 +1963,19 @@ h1, h2, h3, h4, h5, h6 {
     .probation-details p {
         flex-direction: column;
         gap: 0.25rem;
+    }
+
+    .announcement-item .announcement-header {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .announcement-item .announcement-date {
+        align-self: flex-end;
+    }
+    
+    .announcement-actions {
+        justify-content: center;
     }
 }
 
@@ -2071,4 +2181,68 @@ h1, h2, h3, h4, h5, h6 {
 .btn-outline:hover {
     background-color: var(--primary);
     color: white;
+}
+
+/* Modal for warning details */
+.warning-details-modal .modal-body {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.warning-details-modal .detail-item {
+    display: flex;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.warning-details-modal .detail-label {
+    font-weight: 600;
+    width: 120px;
+    color: #495057;
+}
+
+.warning-details-modal .detail-value {
+    flex: 1;
+    color: #6c757d;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1055;
+}
+
+/* Loading spinner for acknowledgments */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: button-loading-spinner 1s ease infinite;
+}
+
+@keyframes button-loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+    to {
+        transform: rotate(1turn);
+    }
 }

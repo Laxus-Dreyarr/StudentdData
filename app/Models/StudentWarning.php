@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentWarning extends Model
 {
+    protected $table = 'student_warnings';
+    protected $primaryKey = 'id';
+    public $timestamps = false;
+
     protected $fillable = [
         'student_id', 'warning_type', 'reason', 
         'issued_date', 'expiry_date', 'status',

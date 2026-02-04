@@ -825,6 +825,33 @@ class StudentController extends Controller
         $hasActiveWarnings = $activeWarnings->count() > 0;
         $warningCount = $activeWarnings->count();
 
+        // Get incomplete grades
+        $incompleteGrades = \App\Models\IncompleteGrade::where('student_id', $student->id)
+            ->where('status', 'Pending')
+            ->with('subject')
+            ->get()
+            ->map(function($inc) {
+                $deadline = $inc->completion_deadline;
+                $daysRemaining = $deadline ? now()->diffInDays($deadline, false) : null;
+                
+                return [
+                    'id' => $inc->id,
+                    'subject_code' => $inc->subject->code ?? 'Unknown',
+                    'subject_name' => $inc->subject->name ?? '',
+                    'date_issued' => $inc->date_issued->format('Y-m-d'),
+                    'completion_deadline' => $deadline ? $deadline->format('Y-m-d') : null,
+                    'days_remaining' => $daysRemaining,
+                    'status' => $inc->status
+                ];
+            });
+        
+        // Check probation status
+        $probationStatus = \App\Models\StudentProbation::where('student_id', $student->id)
+            ->where('status', 'Active')
+            ->first();
+        
+        $hasProbation = !is_null($probationStatus);
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -852,7 +879,10 @@ class StudentController extends Controller
 
             'activeWarnings',
             'hasActiveWarnings',
-            'warningCount'
+            'warningCount',
+            'incompleteGrades',
+            'probationStatus',
+            'hasProbation'
         ));
 
     }
@@ -1202,9 +1232,13 @@ class StudentController extends Controller
 
     public function acknowledgeWarning(Request $request, $warningId)
     {
-        $student = $request->user();
+        $student = $this->getStudentFromUser($request->user());
         
-        $warning = StudentWarning::where('id', $warningId)
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $warning = \App\Models\StudentWarning::where('id', $warningId)
             ->where('student_id', $student->id)
             ->first();
         
@@ -1212,12 +1246,109 @@ class StudentController extends Controller
             return response()->json(['error' => 'Warning not found'], 404);
         }
         
-        // For now, just mark as acknowledged (in a real system, you might track acknowledgment separately)
-        // We'll just return success for demo purposes
+        // Mark as acknowledged (you might want to track this differently)
+        $warning->status = 'Cleared';
+        $warning->save();
         
         return response()->json([
             'success' => true,
-            'message' => 'Warning acknowledged'
+            'message' => 'Warning acknowledged successfully'
+        ]);
+    }
+
+    public function acknowledgeAllWarnings(Request $request)
+    {
+        $student = $this->getStudentFromUser($request->user());
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $warningIds = $request->input('warning_ids', []);
+        
+        if (empty($warningIds)) {
+            // Get all active warnings for this student
+            $warnings = \App\Models\StudentWarning::where('student_id', $student->id)
+                ->where('status', 'Active')
+                ->get();
+        } else {
+            $warnings = \App\Models\StudentWarning::where('student_id', $student->id)
+                ->whereIn('id', $warningIds)
+                ->where('status', 'Active')
+                ->get();
+        }
+        
+        $count = 0;
+        foreach ($warnings as $warning) {
+            $warning->status = 'Cleared';
+            $warning->save();
+            $count++;
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Acknowledged {$count} warnings",
+            'count' => $count
+        ]);
+    }
+
+    public function getWarningDetails(Request $request, $warningId)
+    {
+        $student = $this->getStudentFromUser($request->user());
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $warning = \App\Models\StudentWarning::where('id', $warningId)
+            ->where('student_id', $student->id)
+            ->first();
+        
+        if (!$warning) {
+            return response()->json(['error' => 'Warning not found'], 404);
+        }
+        
+        // Get related subjects if any
+        $relatedSubjects = [];
+        if ($warning->related_subject_ids) {
+            $subjectIds = json_decode($warning->related_subject_ids, true);
+            if (is_array($subjectIds) && !empty($subjectIds)) {
+                $subjects = \App\Models\Subject::whereIn('id', $subjectIds)->get();
+                $relatedSubjects = $subjects->map(function($subject) {
+                    return $subject->code . ' - ' . $subject->name;
+                })->implode(', ');
+            }
+        }
+        
+        return response()->json([
+            'warning' => [
+                'id' => $warning->id,
+                'warning_type' => $warning->warning_type,
+                'reason' => $warning->reason,
+                'issued_date' => $warning->issued_date->format('F j, Y'),
+                'expiry_date' => $warning->expiry_date ? $warning->expiry_date->format('F j, Y') : null,
+                'related_subjects' => $relatedSubjects
+            ]
+        ]);
+    }
+
+    public function checkNewWarnings(Request $request)
+    {
+        $student = $this->getStudentFromUser($request->user());
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        // Check for warnings issued in the last 24 hours
+        $newWarnings = \App\Models\StudentWarning::where('student_id', $student->id)
+            ->where('status', 'Active')
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
+        
+        return response()->json([
+            'has_new_warnings' => $newWarnings > 0,
+            'count' => $newWarnings
         ]);
     }
 

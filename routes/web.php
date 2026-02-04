@@ -53,6 +53,15 @@ Route::middleware(['student.auth'])->group(function () {
     // Probation management
     Route::get('/student/probation-terms', [StudentController::class, 'getProbationTerms']);
     Route::post('/student/probation/request-review', [StudentController::class, 'requestProbationReview']);
+
+    // Warning routes
+    Route::post('/student/warnings/acknowledge-all', [StudentController::class, 'acknowledgeAllWarnings']);
+    Route::get('/student/warnings/{warning}/details', [StudentController::class, 'getWarningDetails']);
+    Route::get('/student/check-new-warnings', [StudentController::class, 'checkNewWarnings']);
+    
+    // Probation routes
+    Route::get('/student/probation/terms', [StudentController::class, 'getProbationTerms']);
+    
     // Add other protected routes here
 });
 
