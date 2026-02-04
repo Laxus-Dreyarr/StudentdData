@@ -1207,6 +1207,175 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
+/* Grades Table Styles */
+.grade-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.grade-table th {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.grade-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.grade-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.grade-table tfoot {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.grade-table tfoot td {
+    border-top: 2px solid #dee2e6;
+}
+
+/* Grade badges */
+.grade-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    min-width: 50px;
+    text-align: center;
+}
+
+.grade-value {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Grade color classes */
+.grade-excellent {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.grade-good {
+    background-color: #cce5ff;
+    color: #004085;
+    border: 1px solid #b8daff;
+}
+
+.grade-passing {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.grade-failing {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.grade-special {
+    background-color: #e2e3e5;
+    color: #383d41;
+    border: 1px solid #d6d8db;
+}
+
+/* Subject name styling */
+.subject-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.subject-name:hover {
+    color: #2196f3;
+}
+
+/* Academic standing badges */
+.academic-standing {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.standing-president {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #856404;
+}
+
+.standing-dean {
+    background: linear-gradient(135deg, #e9ecef, #f8f9fa);
+    color: #495057;
+}
+
+.standing-achiever {
+    background: linear-gradient(135deg, #cce5ff, #e9f5ff);
+    color: #004085;
+}
+
+.standing-satisfactory {
+    background: linear-gradient(135deg, #d4edda, #e9f7ef);
+    color: #155724;
+}
+
+.standing-probation {
+    background: linear-gradient(135deg, #f8d7da, #fdeff0);
+    color: #721c24;
+}
+
+/* Download button */
+#downloadTranscript {
+    transition: all 0.3s ease;
+}
+
+#downloadTranscript:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Progress bar for grade distribution */
+.progress-bar {
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: visible;
+}
+
+.progress-bar:hover::after {
+    content: attr(title);
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+.progress-bar:hover::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: 1000;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1355,6 +1524,29 @@ h1, h2, h3, h4, h5, h6 {
     .progress-meta {
         font-size: 0.7rem;
     }
+
+    .grade-table {
+        font-size: 0.9rem;
+    }
+    
+    .grade-table th,
+    .grade-table td {
+        padding: 8px 10px;
+    }
+    
+    .grade-badge {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        min-width: 40px;
+    }
+    
+    .dashboard-grid .welcome-stat {
+        margin-bottom: 15px;
+    }
+    
+    .progress {
+        height: 15px !important;
+    }
 }
 
 @media (max-width: 576px) {
@@ -1374,6 +1566,11 @@ h1, h2, h3, h4, h5, h6 {
     .dashboard-card {
         padding: 20px;
     }
+}
+
+/* Empty state styling */
+.text-center .fa-graduation-cap {
+    opacity: 0.5;
 }
 
 /* Legend for grade colors */
