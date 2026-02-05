@@ -1708,6 +1708,468 @@ function showNotification(message, type = 'info') {
         this.remove();
     });
 }
+
+
+        function initializeCourses() {
+            // Variables
+            let selectedSubjects = new Map();
+            
+            // DOM Elements
+            const coursesNavItem = document.querySelector('a[data-section="courses"]');
+            const enrollmentModal = document.getElementById('enrollmentModal');
+            
+            // Initialize Bootstrap modal
+            const enrollmentModalInstance = new bootstrap.Modal(enrollmentModal);
+            
+            // Event Listeners
+            if (coursesNavItem) {
+                coursesNavItem.addEventListener('click', handleCoursesNavClick);
+            }
+            
+            // Initialize subject selection
+            initializeSubjectSelection();
+            
+            // Functions
+            async function handleCoursesNavClick(e) {
+                e.preventDefault();
+                
+                try {
+                    // Fetch enrolled subjects from server
+                    const response = await fetch('/student/enrolled-subjects');
+                    if (!response.ok) throw new Error('Failed to fetch enrolled subjects');
+                    
+                    const enrolledData = await response.json();
+                    
+                    // Clear current selections
+                    selectedSubjects.clear();
+                    
+                    // Pre-select enrolled subjects
+                    Object.entries(enrolledData).forEach(([subjectId, data]) => {
+                        if (subjectId && data) {
+                            const subjectRow = document.querySelector(`tr[data-subject-id="${subjectId}"]`);
+                            if (subjectRow) {
+                                const units = subjectRow.querySelector('.subject-checkbox').dataset.units || 3;
+                                
+                                // Add to selectedSubjects map
+                                selectedSubjects.set(parseInt(subjectId), {
+                                    grade: data.grade,
+                                    units: parseInt(units)
+                                });
+                                
+                                // Update UI
+                                const checkbox = subjectRow.querySelector('.subject-checkbox');
+                                const gradeSelect = subjectRow.querySelector('.grade-select');
+                                const undoBtn = subjectRow.querySelector('.undo-btn');
+                                
+                                if (checkbox) checkbox.checked = true;
+                                if (gradeSelect) {
+                                    gradeSelect.disabled = false;
+                                    gradeSelect.value = data.grade;
+                                }
+                                if (undoBtn) undoBtn.style.display = 'inline-block';
+                            }
+                        }
+                    });
+                    
+                    // Update summary
+                    updateSelectedSummary();
+                    
+                    // Show the modal
+                    enrollmentModalInstance.show();
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    enrollmentModalInstance.show();
+                }
+            }
+            
+            function initializeSubjectSelection() {
+                if (!enrollmentModal) return;
+                
+                // Elements inside modal
+                const subjectCheckboxes = enrollmentModal.querySelectorAll('.subject-checkbox');
+                const gradeSelects = enrollmentModal.querySelectorAll('.grade-select');
+                const submitBtn = enrollmentModal.querySelector('#submitEnrollment');
+                const subjectSearch = enrollmentModal.querySelector('#subjectSearch');
+                const clearSearchBtn = enrollmentModal.querySelector('#clearSearch');
+                const showSelectedOnly = enrollmentModal.querySelector('#showSelectedOnly');
+                const hideCompleted = enrollmentModal.querySelector('#hideCompleted');
+                const expandAll = enrollmentModal.querySelector('#expandAll');
+                
+                // Subject checkbox change event
+                subjectCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        const subjectId = parseInt(this.dataset.subjectId);
+                        const units = parseInt(this.dataset.units || 3);
+                        const subjectRow = this.closest('.subject-row');
+                        const gradeSelect = subjectRow.querySelector('.grade-select');
+                        const undoBtn = subjectRow.querySelector('.undo-btn');
+                        
+                        if (this.checked) {
+                            gradeSelect.disabled = false;
+                            undoBtn.style.display = 'inline-block';
+                            
+                            if (!selectedSubjects.has(subjectId)) {
+                                selectedSubjects.set(subjectId, {
+                                    grade: '',
+                                    units: units
+                                });
+                            }
+                        } else {
+                            selectedSubjects.delete(subjectId);
+                            gradeSelect.disabled = true;
+                            gradeSelect.value = '';
+                            undoBtn.style.display = 'none';
+                        }
+                        
+                        updateSelectedSummary();
+                    });
+                });
+                
+                // Grade select change event
+                gradeSelects.forEach(select => {
+                    select.addEventListener('change', function() {
+                        const subjectId = parseInt(this.dataset.subjectId);
+                        const subjectRow = this.closest('.subject-row');
+                        const checkbox = subjectRow.querySelector('.subject-checkbox');
+                        const units = parseInt(checkbox.dataset.units || 3);
+                        
+                        if (this.value) {
+                            selectedSubjects.set(subjectId, {
+                                grade: this.value,
+                                units: units
+                            });
+                            checkbox.checked = true;
+                            subjectRow.querySelector('.undo-btn').style.display = 'inline-block';
+                        } else {
+                            selectedSubjects.delete(subjectId);
+                            checkbox.checked = false;
+                            this.disabled = true;
+                            subjectRow.querySelector('.undo-btn').style.display = 'none';
+                        }
+                        
+                        updateSelectedSummary();
+                    });
+                });
+                
+                // Submit button
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', handleSubmitEnrollment);
+                }
+                
+                // Search functionality
+                if (subjectSearch) {
+                    subjectSearch.addEventListener('input', function() {
+                        const searchTerm = this.value.toLowerCase();
+                        const subjectRows = enrollmentModal.querySelectorAll('.subject-row');
+                        
+                        subjectRows.forEach(row => {
+                            const code = row.dataset.code.toLowerCase();
+                            const name = row.dataset.name.toLowerCase();
+                            
+                            if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                                row.style.display = '';
+                            } else {
+                                row.style.display = 'none';
+                            }
+                        });
+                    });
+                }
+                
+                // Clear search
+                if (clearSearchBtn) {
+                    clearSearchBtn.addEventListener('click', function() {
+                        subjectSearch.value = '';
+                        const subjectRows = enrollmentModal.querySelectorAll('.subject-row');
+                        subjectRows.forEach(row => row.style.display = '');
+                    });
+                }
+                
+                // Undo buttons
+                enrollmentModal.querySelectorAll('.undo-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const subjectId = parseInt(this.dataset.subjectId);
+                        removeSubject(subjectId);
+                    });
+                });
+                
+                // Filter checkboxes
+                if (showSelectedOnly) {
+                    showSelectedOnly.addEventListener('change', function() {
+                        const showSelected = this.checked;
+                        const hideCompletedChecked = hideCompleted.checked;
+                        const subjectRows = enrollmentModal.querySelectorAll('.subject-row');
+                        
+                        subjectRows.forEach(row => {
+                            const checkbox = row.querySelector('.subject-checkbox');
+                            const isSelected = checkbox.checked;
+                            
+                            if (showSelected && !isSelected) {
+                                row.style.display = 'none';
+                            } else if (hideCompletedChecked && isSelected) {
+                                row.style.display = 'none';
+                            } else {
+                                row.style.display = '';
+                            }
+                        });
+                    });
+                }
+                
+                if (hideCompleted) {
+                    hideCompleted.addEventListener('change', function() {
+                        const showSelected = showSelectedOnly.checked;
+                        const hideCompletedChecked = this.checked;
+                        const subjectRows = enrollmentModal.querySelectorAll('.subject-row');
+                        
+                        subjectRows.forEach(row => {
+                            const checkbox = row.querySelector('.subject-checkbox');
+                            const isSelected = checkbox.checked;
+                            
+                            if (showSelected && !isSelected) {
+                                row.style.display = 'none';
+                            } else if (hideCompletedChecked && isSelected) {
+                                row.style.display = 'none';
+                            } else {
+                                row.style.display = '';
+                            }
+                        });
+                    });
+                }
+                
+                // Expand/Collapse buttons
+                const toggleButtons = enrollmentModal.querySelectorAll('.toggle-year, .toggle-semester');
+                toggleButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const icon = this.querySelector('i');
+                        const section = this.classList.contains('toggle-year') 
+                            ? this.closest('.year-level-section')
+                            : this.closest('.semester-section');
+                        
+                        const table = section.querySelector('table');
+                        
+                        if (table) {
+                            if (table.style.display === 'none') {
+                                table.style.display = '';
+                                icon.classList.remove('fa-chevron-right');
+                                icon.classList.add('fa-chevron-down');
+                            } else {
+                                table.style.display = 'none';
+                                icon.classList.remove('fa-chevron-down');
+                                icon.classList.add('fa-chevron-right');
+                            }
+                        }
+                    });
+                });
+                
+                // Expand all checkbox
+                if (expandAll) {
+                    expandAll.addEventListener('change', function() {
+                        const tables = enrollmentModal.querySelectorAll('.subject-table');
+                        const toggleIcons = enrollmentModal.querySelectorAll('.toggle-year i, .toggle-semester i');
+                        
+                        if (this.checked) {
+                            tables.forEach(table => table.style.display = '');
+                            toggleIcons.forEach(icon => {
+                                icon.classList.remove('fa-chevron-right');
+                                icon.classList.add('fa-chevron-down');
+                            });
+                        } else {
+                            tables.forEach(table => table.style.display = 'none');
+                            toggleIcons.forEach(icon => {
+                                icon.classList.remove('fa-chevron-down');
+                                icon.classList.add('fa-chevron-right');
+                            });
+                        }
+                    });
+                }
+            }
+            
+            function handleSubmitEnrollment() {
+                // Validation
+                if (selectedSubjects.size === 0) {
+                    alert('Please select at least one subject.');
+                    return;
+                }
+                
+                // Validate all selected subjects have grades
+                for (let [subjectId, data] of selectedSubjects) {
+                    if (!data.grade || data.grade.trim() === '') {
+                        const subjectRow = enrollmentModal.querySelector(`tr[data-subject-id="${subjectId}"]`);
+                        const subjectCode = subjectRow ? subjectRow.querySelector('.subject-code').textContent : subjectId;
+                        alert(`Please select a grade for subject: ${subjectCode}`);
+                        return;
+                    }
+                }
+                
+                // Confirmation
+                if (!confirm(`Are you sure you want to submit ${selectedSubjects.size} subject(s)?`)) {
+                    return;
+                }
+                
+                // Prepare data in the format your existing function expects
+                const submissionData = {
+                    enrolled_subjects: Array.from(selectedSubjects.entries()).map(([subjectId, data]) => ({
+                        subject_id: subjectId,
+                        grade: data.grade
+                    }))
+                };
+                
+                // Submit to your existing endpoint
+                fetch('/student/enroll-subjects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(submissionData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'Subjects enrolled successfully!');
+                        enrollmentModalInstance.hide();
+                        
+                        // Reset selection
+                        selectedSubjects.clear();
+                        resetSubjectSelectionUI();
+                        
+                        // Optionally reload page
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Failed to enroll subjects.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while submitting. Please try again.');
+                });
+            }
+            
+            function removeSubject(subjectId) {
+                const subjectRow = enrollmentModal.querySelector(`tr[data-subject-id="${subjectId}"]`);
+                if (subjectRow) {
+                    const checkbox = subjectRow.querySelector('.subject-checkbox');
+                    const gradeSelect = subjectRow.querySelector('.grade-select');
+                    const undoBtn = subjectRow.querySelector('.undo-btn');
+                    
+                    checkbox.checked = false;
+                    gradeSelect.disabled = true;
+                    gradeSelect.value = '';
+                    undoBtn.style.display = 'none';
+                    
+                    selectedSubjects.delete(subjectId);
+                    updateSelectedSummary();
+                }
+            }
+            
+            function resetSubjectSelectionUI() {
+                const checkboxes = enrollmentModal.querySelectorAll('.subject-checkbox');
+                const gradeSelects = enrollmentModal.querySelectorAll('.grade-select');
+                const undoBtns = enrollmentModal.querySelectorAll('.undo-btn');
+                
+                checkboxes.forEach(cb => cb.checked = false);
+                gradeSelects.forEach(select => {
+                    select.disabled = true;
+                    select.value = '';
+                });
+                undoBtns.forEach(btn => btn.style.display = 'none');
+            }
+            
+            function updateSelectedSummary() {
+                const selectedList = document.getElementById('selectedSubjectsList');
+                const totalSubjectsEl = document.getElementById('totalSubjectsCount');
+                const totalUnitsEl = document.getElementById('totalUnitsCount');
+                const gwaEl = document.getElementById('gwaPreview');
+                
+                let subjectCount = 0;
+                let totalUnits = 0;
+                let totalGradePoints = 0;
+                let excellentCount = 0;
+                let goodCount = 0;
+                let failingCount = 0;
+                let specialCount = 0;
+                
+                let listHTML = '';
+                
+                selectedSubjects.forEach((data, subjectId) => {
+                    if (data.grade) {
+                        subjectCount++;
+                        totalUnits += data.units;
+                        
+                        const subjectRow = enrollmentModal.querySelector(`tr[data-subject-id="${subjectId}"]`);
+                        if (subjectRow) {
+                            const code = subjectRow.querySelector('.subject-code').textContent;
+                            const name = subjectRow.querySelector('.subject-name').textContent;
+                            
+                            listHTML += `
+                                <div class="selected-subject-item mb-2 p-2 border rounded d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${code}</strong>: ${name}
+                                        <br>
+                                        <small class="text-muted">Units: ${data.units} | Grade: ${data.grade}</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-subject" data-subject-id="${subjectId}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            `;
+                            
+                            const grade = parseFloat(data.grade);
+                            if (!isNaN(grade)) {
+                                if (grade >= 1.0 && grade <= 1.5) {
+                                    excellentCount++;
+                                    totalGradePoints += grade * data.units;
+                                } else if (grade >= 1.6 && grade <= 3.0) {
+                                    goodCount++;
+                                    totalGradePoints += grade * data.units;
+                                } else if (grade >= 4.0 && grade <= 5.0) {
+                                    failingCount++;
+                                }
+                            } else {
+                                specialCount++;
+                            }
+                        }
+                    }
+                });
+                
+                if (listHTML) {
+                    selectedList.innerHTML = listHTML;
+                    selectedList.querySelectorAll('.remove-subject').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const subjectId = parseInt(this.dataset.subjectId);
+                            removeSubject(subjectId);
+                        });
+                    });
+                } else {
+                    selectedList.innerHTML = '<p class="text-muted mb-0">No subjects selected yet.</p>';
+                }
+                
+                totalSubjectsEl.textContent = subjectCount;
+                totalUnitsEl.textContent = totalUnits;
+                
+                const gwa = totalUnits > 0 ? (totalGradePoints / totalUnits).toFixed(2) : '0.00';
+                gwaEl.textContent = gwa;
+                
+                document.getElementById('excellentCount').textContent = excellentCount;
+                document.getElementById('goodCount').textContent = goodCount;
+                document.getElementById('failingCount').textContent = failingCount;
+                document.getElementById('specialCount').textContent = specialCount;
+                
+                const totalCount = subjectCount || 1;
+                const excellentPercent = (excellentCount / totalCount) * 100;
+                const goodPercent = (goodCount / totalCount) * 100;
+                const failingPercent = (failingCount / totalCount) * 100;
+                
+                document.getElementById('passingGradeBar').style.width = `${excellentPercent}%`;
+                document.getElementById('conditionalGradeBar').style.width = `${goodPercent}%`;
+                document.getElementById('failingGradeBar').style.width = `${failingPercent}%`;
+                
+                const submitBtn = document.getElementById('submitEnrollment');
+                if (submitBtn) {
+                    submitBtn.disabled = subjectCount === 0;
+                }
+            }
+        }
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -1720,6 +2182,8 @@ function showNotification(message, type = 'info') {
             
             // Update class status every minute
             setInterval(updateClassStatus, 60000);
+            
+            initializeCourses();
 
             const enrollment = handleEnrollment();
             enrollment.init();

@@ -852,6 +852,8 @@ class StudentController extends Controller
         
         $hasProbation = !is_null($probationStatus);
 
+        
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -886,6 +888,8 @@ class StudentController extends Controller
         ));
 
     }
+
+    
 
     private function runConditionalDelinquencyCheck($student)
     {
@@ -1027,6 +1031,28 @@ class StudentController extends Controller
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    public function getEnrolledSubjects()
+    {
+        try {
+            $user = Auth::guard('student')->user();
+            $student = $user->user_information->student;
+            $studentID = $student->id;
+
+            // Get enrolled subjects for this student
+            $enrolledSubjects = EnrolledSubjects::where('student_id', $studentID)
+                ->select('subject_id', 'grade')
+                ->get()
+                ->keyBy('subject_id');
+
+            return response()->json($enrolledSubjects);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
