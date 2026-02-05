@@ -1361,10 +1361,25 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                                 data-name="{{ strtoupper($subject->name) }}"
                                                                 class="subject-row">
                                                                 <td class="text-center">
+                                                                    @php
+                                                                        $isEnrolled = false;
+                                                                        $enrolledGrade = null;
+                                                                        
+                                                                        // Check if student is enrolled in this subject
+                                                                        foreach($enrolledSubjects as $enrolled) {
+                                                                            if($enrolled->subject_id == $subject->id) {
+                                                                                $isEnrolled = true;
+                                                                                $enrolledGrade = $enrolled->grade;
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                    @endphp
+                                                                    
                                                                     <input type="checkbox" class="form-check-input subject-checkbox" 
                                                                         data-subject-id="{{ $subject->id }}"
                                                                         data-units="{{ $subject->units ?? 3 }}"
-                                                                        id="subject_{{ $subject->id }}">
+                                                                        id="subject_{{ $subject->id }}"
+                                                                        @if($isEnrolled) checked @endif>
                                                                 </td>
                                                                 <td class="subject-code">{{ $subject->code }}</td>
                                                                 <td class="subject-name">{{ $subject->name }}</td>
@@ -1372,27 +1387,29 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                                 <td>
                                                                     <select class="form-select form-select-sm grade-select" 
                                                                             data-subject-id="{{ $subject->id }}" 
-                                                                            disabled>
+                                                                            @if(!$isEnrolled) disabled @endif>
                                                                         <option value="">-- Select --</option>
                                                                         @for($i = 1.0; $i <= 3.1;$i += 0.1)
                                                                             @php
                                                                                 $grade = number_format($i, 1);
                                                                                 $gradeLabel = $grade;
                                                                             @endphp
-                                                                            <option value="{{ $grade }}">{{ $gradeLabel }}</option>
+                                                                            <option value="{{ $grade }}" @if($isEnrolled && $enrolledGrade == $grade) selected @endif>
+                                                                                {{ $gradeLabel }}
+                                                                            </option>
                                                                         @endfor
-                                                                        <option value="4.0">4.0</option>
-                                                                        <option value="5.0">5.0</option>
-                                                                        <option value="INC">INC</option>
-                                                                        <option value="DRP">DRP</option>
-                                                                        <option value="PASS">PASS</option>
-                                                                        <option value="FAIL">FAIL</option>
+                                                                        <option value="4.0" @if($isEnrolled && $enrolledGrade == '4.0') selected @endif>4.0</option>
+                                                                        <option value="5.0" @if($isEnrolled && $enrolledGrade == '5.0') selected @endif>5.0</option>
+                                                                        <option value="INC" @if($isEnrolled && $enrolledGrade == 'INC') selected @endif>INC</option>
+                                                                        <option value="DRP" @if($isEnrolled && $enrolledGrade == 'DRP') selected @endif>DRP</option>
+                                                                        <option value="PASS" @if($isEnrolled && $enrolledGrade == 'PASS') selected @endif>PASS</option>
+                                                                        <option value="FAIL" @if($isEnrolled && $enrolledGrade == 'FAIL') selected @endif>FAIL</option>
                                                                     </select>
                                                                 </td>
                                                                 <td class="text-center">
                                                                     <button type="button" class="btn btn-sm btn-outline-secondary undo-btn" 
                                                                             data-subject-id="{{ $subject->id }}"
-                                                                            style="display: none;">
+                                                                            @if(!$isEnrolled) style="display: none;" @endif>
                                                                         <i class="fas fa-undo"></i> Undo
                                                                     </button>
                                                                 </td>

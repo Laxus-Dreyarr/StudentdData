@@ -711,7 +711,17 @@ class StudentController extends Controller
         $currentYearEnrolled = $enrolledSubjects->filter(function($enrolled) use ($student) {
             // You might need to filter by school year if you store it
             return true; // For now, return all
-        });
+        });// Get student's enrolled subjects for the current school year
+
+        // Create a simple array of enrolled subjects for the modal
+        $enrolledSubjectsForModal = $enrolledSubjects->keyBy('subject_id')->map(function($item) {
+            return [
+                'subject_id' => $item->subject_id,
+                'grade' => $item->grade
+            ];
+        })->toArray();
+
+
 
         // Calculate current year stats
         $currentYearSubjects = $currentYearEnrolled->count();
@@ -884,7 +894,8 @@ class StudentController extends Controller
             'warningCount',
             'incompleteGrades',
             'probationStatus',
-            'hasProbation'
+            'hasProbation',
+            'enrolledSubjectsForModal'
         ));
 
     }
