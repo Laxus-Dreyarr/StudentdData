@@ -61,6 +61,8 @@ Route::middleware(['student.auth'])->group(function () {
     
     // Probation routes
     Route::get('/student/probation/terms', [StudentController::class, 'getProbationTerms']);
+
+    Route::get('/student/enrolled-subjects', [StudentController::class, 'getEnrolledSubjects']);
     
     // Add other protected routes here
 });

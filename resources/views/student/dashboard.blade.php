@@ -1125,6 +1125,14 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                 </div>
                             </div>
                         </div>
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-graduation-cap fa-4x text-gray-300 mb-4"></i>
+                            <h4 class="text-gray-500">No Grades Available</h4>
+                            <p class="text-muted mb-4">You need to enroll in subjects first to see your grades and GPA.</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#enrollmentModal">
+                                <i class="fas fa-plus-circle"></i> Enroll Subjects Now
+                            </button>
+                        </div>
                         @endif
                     </div>
                 @else
@@ -1243,7 +1251,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="enrollmentModalLabel">Select Subjects</h5>
-                        <!-- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button> -->
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <!--  -->
                     <div class="modal-body">
