@@ -1049,6 +1049,7 @@ class StudentController extends Controller
                 'message' => 'Email not found in our system'
             ], 404);
         }
+        
 
         // Here you would typically:
         // 1. Generate a password reset token
