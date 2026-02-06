@@ -1245,7 +1245,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             </section>
         </main>
 
-        @if(!$hasEnrolledSubjects && !empty($availableSubjects))
+        @if(!empty($availableSubjects))
         <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
