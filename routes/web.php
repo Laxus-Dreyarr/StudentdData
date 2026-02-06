@@ -50,6 +50,7 @@ Route::middleware(['student.auth'])->group(function () {
     // Incomplete grade completion
     Route::post('/student/incomplete-grades/{id}/complete', [StudentController::class, 'completeIncompleteGrade']);
     
+    
     // Probation management
     Route::get('/student/probation-terms', [StudentController::class, 'getProbationTerms']);
     Route::post('/student/probation/request-review', [StudentController::class, 'requestProbationReview']);

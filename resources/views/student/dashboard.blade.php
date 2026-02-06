@@ -1463,6 +1463,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
         </div>
         @endif
     </div>
+    
 
     <!-- Footer -->
     <footer class="dashboard-footer">
