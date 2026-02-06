@@ -1208,7 +1208,7 @@ function showToast(message, type = 'success') {
                 calculateGWA: calculateGWA
             };
         }
-        // 
+        
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {

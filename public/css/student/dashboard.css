@@ -1206,6 +1206,215 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #dee2e6;
 }
 
+/* Course Cards */
+.courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.course-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #e0e0e0;
+}
+
+.course-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.course-header {
+    padding: 1.25rem;
+    background: linear-gradient(135deg, var(--primary), #667eea);
+    color: white;
+}
+
+.course-code {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin-bottom: 0.25rem;
+}
+
+.course-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.course-instructor {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.course-body {
+    padding: 1.25rem;
+}
+
+.course-schedule {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: #555;
+}
+
+.course-schedule i {
+    width: 16px;
+    color: var(--primary);
+}
+
+.course-schedule .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--light);
+    color: var(--dark);
+}
+
+.course-grade {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.grade-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.grade-label {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.grade-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.grade-value {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: #f1f1f1;
+    min-width: 60px;
+    text-align: center;
+}
+
+.grade-pass {
+    color: var(--success);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.grade-fail {
+    color: var(--danger);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.btn-edit-grade {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-edit-grade:hover {
+    background: rgba(13, 110, 253, 0.1);
+}
+
+.grade-edit-form {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Empty State */
+.no-courses {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Add/Drop Modal */
+.subject-selection-item {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: #f8f9fa;
+}
+
+.subject-selection-item:hover {
+    background: #e9ecef;
+}
+
+.remove-selection {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.remove-selection:hover {
+    opacity: 1;
+}
+
+/* Progress Bars */
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.progress-label {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.progress-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
 
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
@@ -1354,6 +1563,14 @@ h1, h2, h3, h4, h5, h6 {
     
     .progress-meta {
         font-size: 0.7rem;
+    }
+
+    .courses-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .course-card {
+        margin-bottom: 1rem;
     }
 }
 
