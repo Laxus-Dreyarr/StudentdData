@@ -252,176 +252,11 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     <!-- Campus Announcements -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h5 class="card-title">
-                                <i class="fas fa-bullhorn"></i> 
-                                @if($hasActiveWarnings)
-                                    <span class="text-danger">Academic Warnings & Notices</span>
-                                    <span class="badge bg-danger ms-2">{{ $warningCount }}</span>
-                                @else
-                                    Campus Announcements
-                                @endif
-                            </h5>
-                            <div>
-                                @if($hasActiveWarnings)
-                                    <button class="btn btn-sm btn-outline-warning me-2" id="acknowledgeAllWarnings">
-                                        <i class="fas fa-check-circle"></i> Acknowledge All
-                                    </button>
-                                @endif
-                                <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
-                            </div>
+                            <h5 class="card-title"><i class="fas fa-bullhorn"></i> Campus Announcements</h5>
+                            <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
                         </div>
                         
                         <div class="announcements-list">
-                            @if($hasActiveWarnings)
-                                {{-- Display Active Warnings First --}}
-                                @foreach($activeWarnings as $warning)
-                                    @php
-                                        $warningType = $warning->warning_type;
-                                        $warningClass = '';
-                                        $iconClass = '';
-                                        
-                                        if($warningType == 'First Warning') {
-                                            $warningClass = 'warning-low';
-                                            $iconClass = 'fa-exclamation-circle text-warning';
-                                        } elseif($warningType == 'Second Warning') {
-                                            $warningClass = 'warning-medium';
-                                            $iconClass = 'fa-exclamation-triangle text-warning';
-                                        } elseif($warningType == 'Final Warning') {
-                                            $warningClass = 'warning-high';
-                                            $iconClass = 'fa-times-circle text-danger';
-                                        }
-                                        
-                                        // Calculate days since issued
-                                        $issuedDate = \Carbon\Carbon::parse($warning->issued_date);
-                                        $daysAgo = $issuedDate->diffInDays(now());
-                                        $dateText = $daysAgo == 0 ? 'Today' : ($daysAgo == 1 ? 'Yesterday' : $daysAgo . ' days ago');
-                                    @endphp
-                                    
-                                    <div class="announcement-item {{ $warningClass }} warning-item" data-warning-id="{{ $warning->id }}">
-                                        <div class="announcement-header">
-                                            <div class="announcement-title">
-                                                <i class="fas {{ $iconClass }} me-2"></i>
-                                                <strong>{{ $warningType }}</strong>
-                                            </div>
-                                            <div class="announcement-date">{{ $dateText }}</div>
-                                        </div>
-                                        <div class="announcement-content">
-                                            {{ $warning->reason }}
-                                            @if($warning->expiry_date)
-                                                <br>
-                                                <small class="text-muted">
-                                                    <i class="far fa-clock"></i> 
-                                                    Valid until: {{ \Carbon\Carbon::parse($warning->expiry_date)->format('M d, Y') }}
-                                                </small>
-                                            @endif
-                                        </div>
-                                        <div class="announcement-actions">
-                                            <button class="btn btn-sm btn-outline-success btn-acknowledge" data-warning-id="{{ $warning->id }}">
-                                                <i class="fas fa-check"></i> Acknowledge
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-info btn-view-details" data-warning-id="{{ $warning->id }}">
-                                                <i class="fas fa-info-circle"></i> Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                @endforeach
-                                
-                                {{-- Separator --}}
-                                <hr class="my-3">
-                            @endif
-                            
-                            {{-- Incomplete Grades Notices --}}
-                            @if($incompleteGrades && $incompleteGrades->count() > 0)
-                                @foreach($incompleteGrades as $inc)
-                                    @php
-                                        $daysRemaining = $inc['days_remaining'];
-                                        $warningClass = $daysRemaining !== null && $daysRemaining < 30 ? 'warning-medium' : 'warning-low';
-                                        $dateText = \Carbon\Carbon::parse($inc['completion_deadline'])->format('M d, Y');
-                                    @endphp
-                                    
-                                    <div class="announcement-item {{ $warningClass }}" data-incomplete-id="{{ $inc['id'] }}">
-                                        <div class="announcement-header">
-                                            <div class="announcement-title">
-                                                <i class="fas fa-hourglass-half text-info me-2"></i>
-                                                <strong>Incomplete Grade: {{ $inc['subject_code'] }}</strong>
-                                            </div>
-                                            <div class="announcement-date">Due: {{ $dateText }}</div>
-                                        </div>
-                                        <div class="announcement-content">
-                                            Subject: {{ $inc['subject_name'] }}
-                                            @if($daysRemaining !== null)
-                                                <br>
-                                                <small class="{{ $daysRemaining < 0 ? 'text-danger' : ($daysRemaining < 30 ? 'text-warning' : 'text-muted') }}">
-                                                    <i class="fas fa-clock"></i> 
-                                                    @if($daysRemaining < 0)
-                                                        <strong>OVERDUE by {{ abs($daysRemaining) }} days</strong>
-                                                    @elseif($daysRemaining == 0)
-                                                        <strong>Due today</strong>
-                                                    @else
-                                                        {{ $daysRemaining }} days remaining
-                                                    @endif
-                                                </small>
-                                            @endif
-                                        </div>
-                                        <div class="announcement-actions">
-                                            <button class="btn btn-sm btn-outline-primary btn-submit-completion" data-incomplete-id="{{ $inc['id'] }}">
-                                                <i class="fas fa-upload"></i> Submit
-                                            </button>
-                                        </div>
-                                    </div>
-                                @endforeach
-                                
-                                @if($incompleteGrades->count() > 0)
-                                    <hr class="my-3">
-                                @endif
-                            @endif
-                            
-                            {{-- Probation Notice --}}
-                            @if($hasProbation)
-                                @php
-                                    $probation = $probationStatus;
-                                    $startDate = \Carbon\Carbon::parse($probation->start_date);
-                                    $endDate = $probation->end_date ? \Carbon\Carbon::parse($probation->end_date) : null;
-                                    $daysInProbation = $startDate->diffInDays(now());
-                                    $dateText = $daysInProbation == 0 ? 'Today' : $daysInProbation . ' days ago';
-                                @endphp
-                                
-                                <div class="announcement-item warning-high">
-                                    <div class="announcement-header">
-                                        <div class="announcement-title">
-                                            <i class="fas fa-user-graduate text-danger me-2"></i>
-                                            <strong>Academic Probation</strong>
-                                        </div>
-                                        <div class="announcement-date">{{ $dateText }}</div>
-                                    </div>
-                                    <div class="announcement-content">
-                                        You are currently on academic probation.
-                                        @if($probation->reason)
-                                            <br><small>Reason: {{ $probation->reason }}</small>
-                                        @endif
-                                        @if($probation->credit_limit)
-                                            <br><small><i class="fas fa-info-circle"></i> Credit limit: {{ $probation->credit_limit }} units</small>
-                                        @endif
-                                        @if($endDate)
-                                            <br><small><i class="far fa-calendar"></i> Review date: {{ $endDate->format('M d, Y') }}</small>
-                                        @endif
-                                    </div>
-                                    <div class="announcement-actions">
-                                        <button class="btn btn-sm btn-outline-warning btn-view-probation">
-                                            <i class="fas fa-file-contract"></i> View Terms
-                                        </button>
-                                        @if($endDate && now()->diffInDays($endDate, false) < 30)
-                                            <button class="btn btn-sm btn-outline-info btn-request-review">
-                                                <i class="fas fa-handshake"></i> Request Review
-                                            </button>
-                                        @endif
-                                    </div>
-                                </div>
-                                
-                                <hr class="my-3">
-                            @endif
-                            
-                            {{-- Regular Campus Announcements --}}
                             <div class="announcement-item">
                                 <div class="announcement-header">
                                     <div class="announcement-title">Final Exam Schedule</div>
@@ -721,6 +556,10 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                 <div class="detail-label">Enrollment Status</div>
                                 <div class="detail-value">Regular Student</div>
                             </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Academic Advisor</div>
+                                <div class="detail-value">Prof. Maria Santos</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -849,7 +688,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     <button class="btn-primary">Add/Drop Course</button>
                 </div>
                 
-                <!-- <div class="courses-grid">
+                <div class="courses-grid">
                     <div class="course-card">
                         <div class="course-header">
                             <div class="course-code">CSC 301</div>
@@ -927,229 +766,124 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             <button class="btn-outline" style="width: 100%;">View Course Details</button>
                         </div>
                     </div>
-                </div> -->
+                </div>
             </section>
 
             <!-- Grades Content -->
             <section id="grades-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">Grades & Transcript</h2>
-                    @if($hasEnrolledSubjects)
-                        <button class="btn-primary" id="downloadTranscript">
-                            <i class="fas fa-download"></i> Download Transcript
-                        </button>
-                    @endif
+                    <button class="btn-primary">Download Transcript</button>
                 </div>
                 
-                @if($hasEnrolledSubjects)
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Academic Grades</h5>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-success me-2">Passing: 1.0-3.0</span>
-                                <span class="badge bg-danger">Failing: 4.0-5.0</span>
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title"><i class="fas fa-chart-line"></i> Current Semester Grades</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="grade-table">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Instructor</th>
+                                    <th>Prelim</th>
+                                    <th>Midterm</th>
+                                    <th>Final</th>
+                                    <th>Overall</th>
+                                    <th>Equivalent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Web Development</td>
+                                    <td>Prof. Garcia</td>
+                                    <td>92%</td>
+                                    <td>95%</td>
+                                    <td>89%</td>
+                                    <td>92%</td>
+                                    <td><span class="grade-badge grade-A">A</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Database Systems</td>
+                                    <td>Prof. Santos</td>
+                                    <td>85%</td>
+                                    <td>90%</td>
+                                    <td>89%</td>
+                                    <td>88%</td>
+                                    <td><span class="grade-badge grade-B">B+</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Software Engineering</td>
+                                    <td>Prof. Reyes</td>
+                                    <td>88%</td>
+                                    <td>92%</td>
+                                    <td>90%</td>
+                                    <td>90%</span></td>
+                                    <td><span class="grade-badge grade-A">A-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Data Structures</td>
+                                    <td>Prof. Cruz</td>
+                                    <td>82%</td>
+                                    <td>85%</td>
+                                    <td>88%</td>
+                                    <td>85%</td>
+                                    <td><span class="grade-badge grade-B">B</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Networking</td>
+                                    <td>Prof. Lim</td>
+                                    <td>87%</td>
+                                    <td>84%</td>
+                                    <td>86%</td>
+                                    <td>86%</td>
+                                    <td><span class="grade-badge grade-B">B+</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title"><i class="fas fa-calculator"></i> GPA Summary</h5>
+                    </div>
+                    <div class="dashboard-grid" style="margin-bottom: 0;">
+                        <div>
+                            <div class="welcome-stat">
+                                <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>3.78</h3>
+                                    <p>Current Semester GPA</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="grade-table">
-                                <thead>
-                                    <tr>
-                                        <th width="15%">Code</th>
-                                        <th width="40%">Subject Name</th>
-                                        <th width="15%">Units</th>
-                                        <th width="15%">Grade</th>
-                                        <th width="15%">Equivalent</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if(count($gradesTableData) > 0)
-                                        @foreach($gradesTableData as $grade)
-                                        <tr>
-                                            <td>
-                                                <strong>{{ $grade['subject_code'] }}</strong>
-                                            </td>
-                                            <td>
-                                                <div class="subject-name">{{ $grade['subject_name'] }}</div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-light text-dark">{{ $grade['units'] }}</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="grade-value {{ $grade['color_class'] }}">
-                                                    {{ $grade['grade'] }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="grade-badge {{ $grade['color_class'] }}">
-                                                    {{ $grade['equivalent'] }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    @else
-                                        <tr>
-                                            <td colspan="5" class="text-center py-4">
-                                                <i class="fas fa-book fa-3x text-gray-300 mb-3"></i>
-                                                <h6 class="text-gray-500">No Grade Data Available</h6>
-                                                <p class="text-muted">You haven't enrolled in any subjects yet.</p>
-                                            </td>
-                                        </tr>
-                                    @endif
-                                </tbody>
-                                @if(count($gradesTableData) > 0)
-                                <tfoot>
-                                    <tr class="table-light">
-                                        <td colspan="2" class="text-end">
-                                            <strong>Total:</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>{{ $totalUnits }}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>GWA: {{ number_format($gwa, 2) }}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>{{ $academicStanding }}</strong>
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                                @endif
-                            </table>
+                        <div>
+                            <div class="welcome-stat">
+                                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>3.65</h3>
+                                    <p>Cumulative GPA</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="welcome-stat">
+                                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>Dean's Lister</h3>
+                                    <p>Academic Standing</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-calculator"></i> GPA Summary</h5>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-filter"></i> Filter
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" data-filter="all">All Semesters</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filter="current">Current Year</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filter="previous">Previous Years</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="dashboard-grid" style="margin-bottom: 0;">
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ number_format($currentYearGWA, 2) }}</h3>
-                                        <p>Current Year GWA</p>
-                                        <small class="text-muted">{{ $currentYearSubjects }} subjects</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                                        <i class="fas fa-chart-bar"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ number_format($gwa, 2) }}</h3>
-                                        <p>Cumulative GWA</p>
-                                        <small class="text-muted">{{ $totalSubjects }} total subjects</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">
-                                        <i class="fas fa-award"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ $academicStanding }}</h3>
-                                        <p>Academic Standing</p>
-                                        <small class="text-muted">
-                                            @if(strpos($academicStanding, 'Lister') !== false)
-                                                <i class="fas fa-star text-warning"></i> Excellent
-                                            @else
-                                                {{ $student->status }}
-                                            @endif
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {{-- Grade Distribution --}}
-                        @if(isset($gradeDistribution))
-                        <div class="mt-4">
-                            <h6 class="mb-3">Grade Distribution</h6>
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="progress" style="height: 20px;">
-                                        @php
-                                            $totalGrades = array_sum($gradeDistribution);
-                                            $excellentPercent = ($totalGrades > 0) ? ($gradeDistribution['excellent'] / $totalGrades) * 100 : 0;
-                                            $goodPercent = ($totalGrades > 0) ? ($gradeDistribution['good'] / $totalGrades) * 100 : 0;
-                                            $fairPercent = ($totalGrades > 0) ? ($gradeDistribution['fair'] / $totalGrades) * 100 : 0;
-                                            $passingPercent = ($totalGrades > 0) ? ($gradeDistribution['passing'] / $totalGrades) * 100 : 0;
-                                            $failingPercent = ($totalGrades > 0) ? ($gradeDistribution['failing'] / $totalGrades) * 100 : 0;
-                                        @endphp
-                                        <div class="progress-bar bg-success" style="width: {{ $excellentPercent }}%" 
-                                            title="Excellent (1.0-1.5): {{ $gradeDistribution['excellent'] }}"></div>
-                                        <div class="progress-bar bg-info" style="width: {{ $goodPercent }}%" 
-                                            title="Good (1.6-2.0): {{ $gradeDistribution['good'] }}"></div>
-                                        <div class="progress-bar bg-warning" style="width: {{ $fairPercent }}%" 
-                                            title="Fair (2.1-2.5): {{ $gradeDistribution['fair'] }}"></div>
-                                        <div class="progress-bar bg-secondary" style="width: {{ $passingPercent }}%" 
-                                            title="Passing (2.6-3.0): {{ $gradeDistribution['passing'] }}"></div>
-                                        <div class="progress-bar bg-danger" style="width: {{ $failingPercent }}%" 
-                                            title="Failing (4.0-5.0): {{ $gradeDistribution['failing'] }}"></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="text-end small">
-                                        <div class="mb-1">
-                                            <span class="badge bg-success">1.0-1.5:</span> {{ $gradeDistribution['excellent'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-info">1.6-2.0:</span> {{ $gradeDistribution['good'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-warning">2.1-2.5:</span> {{ $gradeDistribution['fair'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-secondary">2.6-3.0:</span> {{ $gradeDistribution['passing'] }}
-                                        </div>
-                                        <div>
-                                            <span class="badge bg-danger">4.0-5.0:</span> {{ $gradeDistribution['failing'] }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body text-center py-5">
-                            <i class="fas fa-graduation-cap fa-4x text-gray-300 mb-4"></i>
-                            <h4 class="text-gray-500">No Grades Available</h4>
-                            <p class="text-muted mb-4">You need to enroll in subjects first to see your grades and GPA.</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#enrollmentModal">
-                                <i class="fas fa-plus-circle"></i> Enroll Subjects Now
-                            </button>
-                        </div>
-                        @endif
-                    </div>
-                @else
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Academic Grades</h5>
-                        </div>
-                        <div class="card-body text-center py-5">
-                            <i class="fas fa-graduation-cap fa-4x text-gray-300 mb-4"></i>
-                            <h4 class="text-gray-500">No Grades Available</h4>
-                            <p class="text-muted mb-4">You need to enroll in subjects first to see your grades and GPA.</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#enrollmentModal">
-                                <i class="fas fa-plus-circle"></i> Enroll Subjects Now
-                            </button>
-                        </div>
-                    </div>
-                @endif
+                </div>
             </section>
 
             <!-- Placeholder for other sections (assignments, exams, etc.) -->
@@ -1245,13 +979,13 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             </section>
         </main>
 
-        @if(!empty($availableSubjects))
+        @if(!$hasEnrolledSubjects && !empty($availableSubjects))
         <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="enrollmentModalLabel">Select Subjects</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <!-- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button> -->
                     </div>
                     <!--  -->
                     <div class="modal-body">
@@ -1361,25 +1095,10 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                                 data-name="{{ strtoupper($subject->name) }}"
                                                                 class="subject-row">
                                                                 <td class="text-center">
-                                                                    @php
-                                                                        $isEnrolled = false;
-                                                                        $enrolledGrade = null;
-                                                                        
-                                                                        // Check if student is enrolled in this subject
-                                                                        foreach($enrolledSubjects as $enrolled) {
-                                                                            if($enrolled->subject_id == $subject->id) {
-                                                                                $isEnrolled = true;
-                                                                                $enrolledGrade = $enrolled->grade;
-                                                                                break;
-                                                                            }
-                                                                        }
-                                                                    @endphp
-                                                                    
                                                                     <input type="checkbox" class="form-check-input subject-checkbox" 
                                                                         data-subject-id="{{ $subject->id }}"
                                                                         data-units="{{ $subject->units ?? 3 }}"
-                                                                        id="subject_{{ $subject->id }}"
-                                                                        @if($isEnrolled) checked @endif>
+                                                                        id="subject_{{ $subject->id }}">
                                                                 </td>
                                                                 <td class="subject-code">{{ $subject->code }}</td>
                                                                 <td class="subject-name">{{ $subject->name }}</td>
@@ -1387,29 +1106,27 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                                 <td>
                                                                     <select class="form-select form-select-sm grade-select" 
                                                                             data-subject-id="{{ $subject->id }}" 
-                                                                            @if(!$isEnrolled) disabled @endif>
+                                                                            disabled>
                                                                         <option value="">-- Select --</option>
-                                                                        @for($i = 1.0; $i <= 3.1;$i += 0.1)
+                                                                        @for($i = 1.0; $i <= 3.0; $i += 0.1)
                                                                             @php
                                                                                 $grade = number_format($i, 1);
                                                                                 $gradeLabel = $grade;
                                                                             @endphp
-                                                                            <option value="{{ $grade }}" @if($isEnrolled && $enrolledGrade == $grade) selected @endif>
-                                                                                {{ $gradeLabel }}
-                                                                            </option>
+                                                                            <option value="{{ $grade }}">{{ $gradeLabel }}</option>
                                                                         @endfor
-                                                                        <option value="4.0" @if($isEnrolled && $enrolledGrade == '4.0') selected @endif>4.0</option>
-                                                                        <option value="5.0" @if($isEnrolled && $enrolledGrade == '5.0') selected @endif>5.0</option>
-                                                                        <option value="INC" @if($isEnrolled && $enrolledGrade == 'INC') selected @endif>INC</option>
-                                                                        <option value="DRP" @if($isEnrolled && $enrolledGrade == 'DRP') selected @endif>DRP</option>
-                                                                        <option value="PASS" @if($isEnrolled && $enrolledGrade == 'PASS') selected @endif>PASS</option>
-                                                                        <option value="FAIL" @if($isEnrolled && $enrolledGrade == 'FAIL') selected @endif>FAIL</option>
+                                                                        <option value="4.0">4.0</option>
+                                                                        <option value="5.0">5.0</option>
+                                                                        <option value="INC">INC</option>
+                                                                        <option value="DRP">DRP</option>
+                                                                        <option value="PASS">PASS</option>
+                                                                        <option value="FAIL">FAIL</option>
                                                                     </select>
                                                                 </td>
                                                                 <td class="text-center">
                                                                     <button type="button" class="btn btn-sm btn-outline-secondary undo-btn" 
                                                                             data-subject-id="{{ $subject->id }}"
-                                                                            @if(!$isEnrolled) style="display: none;" @endif>
+                                                                            style="display: none;">
                                                                         <i class="fas fa-undo"></i> Undo
                                                                     </button>
                                                                 </td>
@@ -1672,6 +1389,5 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
-    <script src="{{ asset('js/function/student/scholastic-warnings.js') }}"></script>
 </body>
 </html>

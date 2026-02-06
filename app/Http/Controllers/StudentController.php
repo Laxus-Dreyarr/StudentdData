@@ -30,11 +30,6 @@ use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use DateTime;
 
-use App\Services\ScholasticDelinquencyService;
-use App\Models\StudentWarning;
-use App\Models\StudentProbation;
-use App\Models\IncompleteGrade;
-
 class StudentController extends Controller
 {
     public function register(Request $request)
@@ -471,23 +466,6 @@ class StudentController extends Controller
         $user->last_login = Carbon::now();
         $user->save();
 
-        // Get the student record
-        $studentInfo = UserInfo::where('user_id', $user->id)->first();
-        $student = null;
-        
-        if ($studentInfo) {
-            $student = Student::where('student_id', $studentInfo->id)->first();
-            
-            // Run scholastic delinquency check
-            if ($student) {
-                $this->runDelinquencyCheck($student->id);
-                
-                // Update last login
-                $user->last_login = now();
-                $user->save();
-            }
-        }
-
         // Prepare response data
         // $responseData = [
         //     'success' => true,
@@ -508,26 +486,6 @@ class StudentController extends Controller
 
 
         return response()->json($responseData);
-    }
-
-
-    private function runDelinquencyCheck($studentId)
-    {
-        try {
-            $service = new ScholasticDelinquencyService();
-            $result = $service->checkStudentDelinquency($studentId);
-            
-            // Log the check
-            Log::info("Delinquency check run for student ID: {$studentId}", [
-                'warnings_issued' => count($result['warnings_issued'] ?? []),
-                'timestamp' => now()
-            ]);
-            
-            return $result;
-        } catch (\Exception $e) {
-            Log::error("Error running delinquency check for student {$studentId}: " . $e->getMessage());
-            return null;
-        }
     }
 
     /**
@@ -674,86 +632,44 @@ class StudentController extends Controller
         }
         
         // If no enrolled subjects, get available subjects for their curriculum
-        // $availableSubjects = [];
-        // if (!$hasEnrolledSubjects) {
-        //     // Get curriculum_id from curriculum table based on student's curriculum year
-        //     $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
-            
-        //     if ($curriculum) {
-        //         // Get all subjects for this curriculum (for search functionality)
-        //         $allSubjects = Subject::where('curriculum_id', $curriculum->id)
-        //             ->where('is_active', 1)
-        //             ->orderByRaw("
-        //                 CASE year_level 
-        //                     WHEN '1st Year' THEN 1
-        //                     WHEN '2nd Year' THEN 2
-        //                     WHEN '3rd Year' THEN 3
-        //                     WHEN '4th Year' THEN 4
-        //                     WHEN '5th Year' THEN 5
-        //                     ELSE 6
-        //                 END,
-        //                 CASE semester
-        //                     WHEN '1st Sem' THEN 1
-        //                     WHEN '2nd Sem' THEN 2
-        //                     WHEN 'Summer' THEN 3
-        //                     ELSE 4
-        //                 END,
-        //                 code
-        //             ")
-        //             ->get();
-                
-        //         // Group subjects for display
-        //         $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
-        //     }
-        // }
-
-        // ALWAYS get available subjects for their curriculum (for the courses modal)
         $availableSubjects = [];
-        // Get curriculum_id from curriculum table based on student's curriculum year
-        $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
-
-        if ($curriculum) {
-            // Get all subjects for this curriculum (for search functionality)
-            $allSubjects = Subject::where('curriculum_id', $curriculum->id)
-                ->where('is_active', 1)
-                ->orderByRaw("
-                    CASE year_level 
-                        WHEN '1st Year' THEN 1
-                        WHEN '2nd Year' THEN 2
-                        WHEN '3rd Year' THEN 3
-                        WHEN '4th Year' THEN 4
-                        WHEN '5th Year' THEN 5
-                        ELSE 6
-                    END,
-                    CASE semester
-                        WHEN '1st Sem' THEN 1
-                        WHEN '2nd Sem' THEN 2
-                        WHEN 'Summer' THEN 3
-                        ELSE 4
-                    END,
-                    code
-                ")
-                ->get();
+        if (!$hasEnrolledSubjects) {
+            // Get curriculum_id from curriculum table based on student's curriculum year
+            $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
             
-            // Group subjects for display
-            $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
+            if ($curriculum) {
+                // Get all subjects for this curriculum (for search functionality)
+                $allSubjects = Subject::where('curriculum_id', $curriculum->id)
+                    ->where('is_active', 1)
+                    ->orderByRaw("
+                        CASE year_level 
+                            WHEN '1st Year' THEN 1
+                            WHEN '2nd Year' THEN 2
+                            WHEN '3rd Year' THEN 3
+                            WHEN '4th Year' THEN 4
+                            WHEN '5th Year' THEN 5
+                            ELSE 6
+                        END,
+                        CASE semester
+                            WHEN '1st Sem' THEN 1
+                            WHEN '2nd Sem' THEN 2
+                            WHEN 'Summer' THEN 3
+                            ELSE 4
+                        END,
+                        code
+                    ")
+                    ->get();
+                
+                // Group subjects for display
+                $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
+            }
         }
 
         // Get student's enrolled subjects for the current school year
         $currentYearEnrolled = $enrolledSubjects->filter(function($enrolled) use ($student) {
             // You might need to filter by school year if you store it
             return true; // For now, return all
-        });// Get student's enrolled subjects for the current school year
-
-        // Create a simple array of enrolled subjects for the modal
-        $enrolledSubjectsForModal = $enrolledSubjects->keyBy('subject_id')->map(function($item) {
-            return [
-                'subject_id' => $item->subject_id,
-                'grade' => $item->grade
-            ];
-        })->toArray();
-
-
+        });
 
         // Calculate current year stats
         $currentYearSubjects = $currentYearEnrolled->count();
@@ -830,72 +746,6 @@ class StudentController extends Controller
             ];
         })->sortByDesc('numeric_grade')->take(4);
 
-        $gradesTableData = $enrolledSubjects->map(function($enrolled) {
-            $subject = $enrolled->subject;
-            $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
-            
-            // Get equivalent letter grade or status
-            $equivalent = $this->getGradeEquivalent($enrolled->grade);
-            
-            return [
-                'subject_code' => $subject->code ?? 'N/A',
-                'subject_name' => $subject->name ?? 'Unknown Subject',
-                'grade' => $enrolled->grade,
-                'numeric_grade' => $numericGrade,
-                'equivalent' => $equivalent,
-                'units' => $subject->units ?? 3,
-                'color_class' => $this->getGradeColorClass($numericGrade),
-            ];
-        })->sortBy('subject_code');
-
-        $academicStanding = $this->getAcademicStanding($gwa);
-
-
-        // Run delinquency check (but less frequently - maybe once per day)
-        // $this->runConditionalDelinquencyCheck($student);
-        
-        // Get active warnings for display
-        $activeWarnings = \App\Models\StudentWarning::where('student_id', $student->id)
-            ->where('status', 'Active')
-            ->where(function($query) {
-                $query->whereNull('expiry_date')
-                    ->orWhere('expiry_date', '>=', now());
-            })
-            ->orderBy('issued_date', 'desc')
-            ->get();
-        
-        $hasActiveWarnings = $activeWarnings->count() > 0;
-        $warningCount = $activeWarnings->count();
-
-        // Get incomplete grades
-        $incompleteGrades = \App\Models\IncompleteGrade::where('student_id', $student->id)
-            ->where('status', 'Pending')
-            ->with('subject')
-            ->get()
-            ->map(function($inc) {
-                $deadline = $inc->completion_deadline;
-                $daysRemaining = $deadline ? now()->diffInDays($deadline, false) : null;
-                
-                return [
-                    'id' => $inc->id,
-                    'subject_code' => $inc->subject->code ?? 'Unknown',
-                    'subject_name' => $inc->subject->name ?? '',
-                    'date_issued' => $inc->date_issued->format('Y-m-d'),
-                    'completion_deadline' => $deadline ? $deadline->format('Y-m-d') : null,
-                    'days_remaining' => $daysRemaining,
-                    'status' => $inc->status
-                ];
-            });
-        
-        // Check probation status
-        $probationStatus = \App\Models\StudentProbation::where('student_id', $student->id)
-            ->where('status', 'Active')
-            ->first();
-        
-        $hasProbation = !is_null($probationStatus);
-
-        
-
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -917,38 +767,9 @@ class StudentController extends Controller
             'enrolledSubjects',
             'recentSubjects',
             'gradeDistribution',
-            'academicProgress',
-            'gradesTableData',
-            'academicStanding',
-
-            'activeWarnings',
-            'hasActiveWarnings',
-            'warningCount',
-            'incompleteGrades',
-            'probationStatus',
-            'hasProbation',
-            'enrolledSubjectsForModal'
+            'academicProgress'
         ));
 
-    }
-
-    
-
-    private function runConditionalDelinquencyCheck($student)
-    {
-        
-        $today = now()->format('Y-m-d');
-        $lastCheck = $student->last_delinquency_check ? 
-                    $student->last_delinquency_check->format('Y-m-d') : null;
-        
-        // Check if we need to run it today
-        if ($lastCheck !== $today) {
-            $this->runDelinquencyCheck($student->id);
-            
-            // Update last check date
-            $student->last_delinquency_check = now();
-            $student->save();
-        }
     }
 
     // Add to StudentController.php
@@ -1077,28 +898,6 @@ class StudentController extends Controller
         }
     }
 
-    public function getEnrolledSubjects()
-    {
-        try {
-            $user = Auth::guard('student')->user();
-            $student = $user->user_information->student;
-            $studentID = $student->id;
-
-            // Get enrolled subjects for this student
-            $enrolledSubjects = EnrolledSubjects::where('student_id', $studentID)
-                ->select('subject_id', 'grade')
-                ->get()
-                ->keyBy('subject_id');
-
-            return response()->json($enrolledSubjects);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     // Helper method to convert letter grades to numeric
     private function convertGradeToNumeric($grade)
     {
@@ -1119,61 +918,6 @@ class StudentController extends Controller
         ];
         
         return $gradeMap[$grade] ?? 0;
-    }
-
-    // helper method to get grade equivalent
-    private function getGradeEquivalent($grade)
-    {
-        $gradeMap = [
-            // Passing grades
-            '1.0' => '1.0', '1.1' => '1.1', '1.2' => '1.2', '1.3' => '1.3', '1.4' => '1.4',
-            '1.5' => '1.5', '1.6' => '1.6', '1.7' => '1.7', '1.8' => '1.8', '1.9' => '1.9',
-            '2.0' => '2.0', '2.1' => '2.1', '2.2' => '2.2', '2.3' => '2.3', '2.4' => '2.4',
-            '2.5' => '2.5', '2.6' => '2.6', '2.7' => '2.7', '2.8' => '2.8', '2.9' => '2.9',
-            '3.0' => '3.0',
-            
-            // Failing and special grades
-            '4.0' => '4.0',
-            '5.0' => '5.0',
-            'INC' => 'INC',
-            'DRP' => 'DRP',
-            'PASS' => 'PASS',
-            'FAIL' => 'FAIL',
-        ];
-        
-        return $gradeMap[$grade] ?? $grade;
-    }
-
-    // helper method to get grade color class for badges
-    private function getGradeColorClass($numericGrade)
-    {
-    if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
-        return 'grade-excellent'; // Green
-    } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
-        return 'grade-good'; // Blue
-    } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
-        return 'grade-passing'; // Yellow
-    } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
-        return 'grade-failing'; // Red
-    } else {
-        return 'grade-special'; // Gray
-    }
-}
-
-    // Determine academic standing
-    private function getAcademicStanding($gwa)
-    {
-        if ($gwa >= 1.0 && $gwa <= 1.45) {
-            return 'President\'s Lister';
-        } elseif ($gwa >= 1.46 && $gwa <= 1.75) {
-            return 'Dean\'s Lister';
-        } elseif ($gwa >= 1.76 && $gwa <= 2.00) {
-            return 'Academic Achiever';
-        } elseif ($gwa >= 2.01 && $gwa <= 2.75) {
-            return 'Satisfactory';
-        } else {
-            return 'On Probation';
-        }
     }
 
     /**
@@ -1202,244 +946,6 @@ class StudentController extends Controller
             'success' => false,
             'message' => 'Not authenticated'
         ], 401);
-    }
-
-    public function getAcademicStatus(Request $request)
-    {
-        $student = $request->user();
-        $studentId = $student->id;
-        
-        // Get active warnings
-        $activeWarnings = StudentWarning::where('student_id', $studentId)
-            ->where('status', 'Active')
-            ->where(function($query) {
-                $query->whereNull('expiry_date')
-                    ->orWhere('expiry_date', '>=', now());
-            })
-            ->orderBy('issued_date', 'desc')
-            ->get()
-            ->map(function($warning) {
-                return [
-                    'id' => $warning->id,
-                    'warning_type' => $warning->warning_type,
-                    'reason' => $warning->reason,
-                    'issued_date' => $warning->issued_date->format('Y-m-d'),
-                    'expiry_date' => $warning->expiry_date ? $warning->expiry_date->format('Y-m-d') : null,
-                    'severity' => $this->getWarningSeverity($warning->warning_type)
-                ];
-            });
-        
-        // Get probation status
-        $probation = StudentProbation::where('student_id', $studentId)
-            ->where('status', 'Active')
-            ->first();
-        
-        $probationStatus = null;
-        if ($probation) {
-            $probationStatus = [
-                'status' => $probation->status,
-                'start_date' => $probation->start_date->format('Y-m-d'),
-                'end_date' => $probation->end_date ? $probation->end_date->format('Y-m-d') : null,
-                'reason' => $probation->reason,
-                'credit_limit' => $probation->credit_limit
-            ];
-        }
-        
-        // Get incomplete grades
-        $incompleteGrades = IncompleteGrade::where('student_id', $studentId)
-            ->where('status', 'Pending')
-            ->with('subject')
-            ->get()
-            ->map(function($inc) {
-                $deadline = $inc->completion_deadline;
-                $daysRemaining = $deadline ? now()->diffInDays($deadline, false) : null;
-                
-                return [
-                    'id' => $inc->id,
-                    'subject_code' => $inc->subject->code ?? 'Unknown',
-                    'subject_name' => $inc->subject->name ?? '',
-                    'date_issued' => $inc->date_issued->format('Y-m-d'),
-                    'completion_deadline' => $deadline ? $deadline->format('Y-m-d') : null,
-                    'days_remaining' => $daysRemaining,
-                    'status' => $inc->status
-                ];
-            });
-        
-        // Academic summary
-        $enrolledSubjects = \App\Models\EnrolledSubjects::where('student_id', $studentId)
-            ->where('sy', '2025-2026')
-            ->with('subject')
-            ->get();
-        
-        $failedSubjects = $enrolledSubjects->where('grade', '5.0')->count();
-        $incompleteCount = $enrolledSubjects->where('grade', 'INC')->count();
-        
-        $grades = $enrolledSubjects->whereNotNull('grade')
-            ->where('grade', '!=', 'INC')
-            ->pluck('grade')
-            ->map(function($grade) {
-                return floatval($grade);
-            });
-        
-        $averageGrade = $grades->isNotEmpty() ? $grades->avg() : 0;
-        
-        $academicSummary = [
-            'failed_subjects' => $failedSubjects,
-            'incomplete_grades' => $incompleteCount,
-            'average_grade' => $averageGrade,
-            'warning_count' => $activeWarnings->count()
-        ];
-        
-        return response()->json([
-            'active_warnings' => $activeWarnings,
-            'probation_status' => $probationStatus,
-            'incomplete_grades' => $incompleteGrades,
-            'academic_summary' => $academicSummary,
-            'last_checked' => now()->format('Y-m-d H:i:s')
-        ]);
-    }
-
-    public function acknowledgeWarning(Request $request, $warningId)
-    {
-        $student = $this->getStudentFromUser($request->user());
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        $warning = \App\Models\StudentWarning::where('id', $warningId)
-            ->where('student_id', $student->id)
-            ->first();
-        
-        if (!$warning) {
-            return response()->json(['error' => 'Warning not found'], 404);
-        }
-        
-        // Mark as acknowledged (you might want to track this differently)
-        $warning->status = 'Cleared';
-        $warning->save();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Warning acknowledged successfully'
-        ]);
-    }
-
-    public function acknowledgeAllWarnings(Request $request)
-    {
-        $student = $this->getStudentFromUser($request->user());
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        $warningIds = $request->input('warning_ids', []);
-        
-        if (empty($warningIds)) {
-            // Get all active warnings for this student
-            $warnings = \App\Models\StudentWarning::where('student_id', $student->id)
-                ->where('status', 'Active')
-                ->get();
-        } else {
-            $warnings = \App\Models\StudentWarning::where('student_id', $student->id)
-                ->whereIn('id', $warningIds)
-                ->where('status', 'Active')
-                ->get();
-        }
-        
-        $count = 0;
-        foreach ($warnings as $warning) {
-            $warning->status = 'Cleared';
-            $warning->save();
-            $count++;
-        }
-        
-        return response()->json([
-            'success' => true,
-            'message' => "Acknowledged {$count} warnings",
-            'count' => $count
-        ]);
-    }
-
-    public function getWarningDetails(Request $request, $warningId)
-    {
-        $student = $this->getStudentFromUser($request->user());
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        $warning = \App\Models\StudentWarning::where('id', $warningId)
-            ->where('student_id', $student->id)
-            ->first();
-        
-        if (!$warning) {
-            return response()->json(['error' => 'Warning not found'], 404);
-        }
-        
-        // Get related subjects if any
-        $relatedSubjects = [];
-        if ($warning->related_subject_ids) {
-            $subjectIds = json_decode($warning->related_subject_ids, true);
-            if (is_array($subjectIds) && !empty($subjectIds)) {
-                $subjects = \App\Models\Subject::whereIn('id', $subjectIds)->get();
-                $relatedSubjects = $subjects->map(function($subject) {
-                    return $subject->code . ' - ' . $subject->name;
-                })->implode(', ');
-            }
-        }
-        
-        return response()->json([
-            'warning' => [
-                'id' => $warning->id,
-                'warning_type' => $warning->warning_type,
-                'reason' => $warning->reason,
-                'issued_date' => $warning->issued_date->format('F j, Y'),
-                'expiry_date' => $warning->expiry_date ? $warning->expiry_date->format('F j, Y') : null,
-                'related_subjects' => $relatedSubjects
-            ]
-        ]);
-    }
-
-    public function checkNewWarnings(Request $request)
-    {
-        $student = $this->getStudentFromUser($request->user());
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        // Check for warnings issued in the last 24 hours
-        $newWarnings = \App\Models\StudentWarning::where('student_id', $student->id)
-            ->where('status', 'Active')
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
-        
-        return response()->json([
-            'has_new_warnings' => $newWarnings > 0,
-            'count' => $newWarnings
-        ]);
-    }
-
-    public function checkDelinquency(Request $request)
-    {
-        $student = $request->user();
-        $service = new ScholasticDelinquencyService();
-        
-        $result = $service->checkStudentDelinquency($student->id);
-        
-        return response()->json($result);
-    }
-
-    private function getWarningSeverity($warningType)
-    {
-        $severityMap = [
-            'First Warning' => 'low',
-            'Second Warning' => 'medium',
-            'Final Warning' => 'high'
-        ];
-        
-        return $severityMap[$warningType] ?? 'medium';
     }
 
     /**
