@@ -674,37 +674,69 @@ class StudentController extends Controller
         }
         
         // If no enrolled subjects, get available subjects for their curriculum
-        $availableSubjects = [];
-        if (!$hasEnrolledSubjects) {
-            // Get curriculum_id from curriculum table based on student's curriculum year
-            $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
+        // $availableSubjects = [];
+        // if (!$hasEnrolledSubjects) {
+        //     // Get curriculum_id from curriculum table based on student's curriculum year
+        //     $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
             
-            if ($curriculum) {
-                // Get all subjects for this curriculum (for search functionality)
-                $allSubjects = Subject::where('curriculum_id', $curriculum->id)
-                    ->where('is_active', 1)
-                    ->orderByRaw("
-                        CASE year_level 
-                            WHEN '1st Year' THEN 1
-                            WHEN '2nd Year' THEN 2
-                            WHEN '3rd Year' THEN 3
-                            WHEN '4th Year' THEN 4
-                            WHEN '5th Year' THEN 5
-                            ELSE 6
-                        END,
-                        CASE semester
-                            WHEN '1st Sem' THEN 1
-                            WHEN '2nd Sem' THEN 2
-                            WHEN 'Summer' THEN 3
-                            ELSE 4
-                        END,
-                        code
-                    ")
-                    ->get();
+        //     if ($curriculum) {
+        //         // Get all subjects for this curriculum (for search functionality)
+        //         $allSubjects = Subject::where('curriculum_id', $curriculum->id)
+        //             ->where('is_active', 1)
+        //             ->orderByRaw("
+        //                 CASE year_level 
+        //                     WHEN '1st Year' THEN 1
+        //                     WHEN '2nd Year' THEN 2
+        //                     WHEN '3rd Year' THEN 3
+        //                     WHEN '4th Year' THEN 4
+        //                     WHEN '5th Year' THEN 5
+        //                     ELSE 6
+        //                 END,
+        //                 CASE semester
+        //                     WHEN '1st Sem' THEN 1
+        //                     WHEN '2nd Sem' THEN 2
+        //                     WHEN 'Summer' THEN 3
+        //                     ELSE 4
+        //                 END,
+        //                 code
+        //             ")
+        //             ->get();
                 
-                // Group subjects for display
-                $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
-            }
+        //         // Group subjects for display
+        //         $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
+        //     }
+        // }
+
+        // ALWAYS get available subjects for their curriculum (for the courses modal)
+        $availableSubjects = [];
+        // Get curriculum_id from curriculum table based on student's curriculum year
+        $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
+
+        if ($curriculum) {
+            // Get all subjects for this curriculum (for search functionality)
+            $allSubjects = Subject::where('curriculum_id', $curriculum->id)
+                ->where('is_active', 1)
+                ->orderByRaw("
+                    CASE year_level 
+                        WHEN '1st Year' THEN 1
+                        WHEN '2nd Year' THEN 2
+                        WHEN '3rd Year' THEN 3
+                        WHEN '4th Year' THEN 4
+                        WHEN '5th Year' THEN 5
+                        ELSE 6
+                    END,
+                    CASE semester
+                        WHEN '1st Sem' THEN 1
+                        WHEN '2nd Sem' THEN 2
+                        WHEN 'Summer' THEN 3
+                        ELSE 4
+                    END,
+                    code
+                ")
+                ->get();
+            
+            // Group subjects for display
+            $availableSubjects = $allSubjects->groupBy(['year_level', 'semester']);
         }
 
         // Get student's enrolled subjects for the current school year
