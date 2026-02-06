@@ -68,6 +68,7 @@ Route::middleware(['student.auth'])->group(function () {
     Route::post('/student/update-grade', [StudentController::class, 'updateSubjectGrade']);
     Route::post('/student/update-subjects', [StudentController::class, 'updateSubjects']);
     Route::get('/student/enrolled-subjects', [StudentController::class, 'getEnrolledSubjects']);
+    Route::get('/student/available-subjects', [StudentController::class,'getAvailableSubjectsForAddDrop']);
     
     // Add other protected routes here
 });
