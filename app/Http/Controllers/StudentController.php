@@ -766,6 +766,32 @@ class StudentController extends Controller
 
         $academicStanding = $this->getAcademicStanding($gwa);
 
+        $enrolledSubjects2 = [];
+        if ($student) {
+            $enrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+                ->with('subject')
+                ->get()
+                ->map(function ($enrolled) {
+                    // Get schedule information if available
+                    $schedule = SubjectSchedule::where('subject_id', $enrolled->subject_id)->first();
+                    return [
+                        'id' => $enrolled->id,
+                        'subject_id' => $enrolled->subject_id,
+                        'subject_code' => $enrolled->subject->code,
+                        'subject_name' => $enrolled->subject->name,
+                        'units' => $enrolled->subject->units,
+                        'grade' => $enrolled->grade,
+                        'schedule' => $schedule ? [
+                            'day' => $schedule->day,
+                            'start_time' => $schedule->start_time,
+                            'end_time' => $schedule->end_time,
+                            'room' => $schedule->room,
+                            'type' => $schedule->Type
+                        ] : null
+                    ];
+                });
+        }
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -785,6 +811,7 @@ class StudentController extends Controller
             'currentYearSubjects',
             'currentYearUnits',
             'enrolledSubjects',
+            'enrolledSubjects2',
             'recentSubjects',
             'gradeDistribution',
             'academicProgress',
@@ -810,6 +837,143 @@ class StudentController extends Controller
         } else {
             return 'Pending';
         }
+    }
+
+    public function updateSubjectGrade(Request $request)
+    {
+        $user = $request->user();
+        $student = Student::where('student_id', $user->id)->first();
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $validated = $request->validate([
+            'subject_id' => 'required|integer|exists:subjects,id',
+            'grade' => 'required|string|in:1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,4.0,5.0,INC,DRP,PASS,FAIL'
+        ]);
+        
+        try {
+            // Update the grade
+            $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
+                ->where('subject_id', $validated['subject_id'])
+                ->first();
+            
+            if ($enrolledSubject) {
+                $enrolledSubject->grade = $validated['grade'];
+                $enrolledSubject->save();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Grade updated successfully'
+                ]);
+            } else {
+                return response()->json(['error' => 'Subject not enrolled'], 404);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to update grade'], 500);
+        }
+    }
+
+    public function updateSubjects(Request $request)
+    {
+        $user = $request->user();
+        $student = Student::where('student_id', $user->id)->first();
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $validated = $request->validate([
+            'changes' => 'required|array',
+            'changes.*.action' => 'required|in:add,drop,update',
+            'changes.*.subject_id' => 'required|integer|exists:subjects,id',
+            'changes.*.grade' => 'nullable|string'
+        ]);
+        
+        try {
+            DB::beginTransaction();
+            
+            foreach ($validated['changes'] as $change) {
+                switch ($change['action']) {
+                    case 'add':
+                        // Check if not already enrolled
+                        $exists = EnrolledSubjects::where('student_id', $student->id)
+                            ->where('subject_id', $change['subject_id'])
+                            ->exists();
+                        
+                        if (!$exists) {
+                            EnrolledSubjects::create([
+                                'student_id' => $student->id,
+                                'subject_id' => $change['subject_id'],
+                                'grade' => $change['grade'] ?? null
+                            ]);
+                        }
+                        break;
+                        
+                    case 'drop':
+                        EnrolledSubjects::where('student_id', $student->id)
+                            ->where('subject_id', $change['subject_id'])
+                            ->delete();
+                        break;
+                        
+                    case 'update':
+                        EnrolledSubjects::where('student_id', $student->id)
+                            ->where('subject_id', $change['subject_id'])
+                            ->update(['grade' => $change['grade']]);
+                        break;
+                }
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Courses updated successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to update courses: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getAvailableSubjectsForAddDrop(Request $request)
+    {
+        $user = $request->user();
+        $student = Student::where('student_id', $user->id)->first();
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        // Get current enrolled subject IDs
+        $enrolledSubjectIds = EnrolledSubjects::where('student_id', $student->id)
+            ->pluck('subject_id')
+            ->toArray();
+
+        $availableSubjects = [];
+
+        // Get the curriculum ID based on the student's curriculum year
+        $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
+
+        if ($curriculum) {
+            $availableSubjects = Subject::where('curriculum_id', $curriculum->id)
+                ->where('is_active', 1)
+                ->whereNotIn('id', $enrolledSubjectIds)
+                ->orderBy('year_level')
+                ->orderBy('semester')
+                ->orderBy('code')
+                ->get()
+                ->groupBy('year_level')
+                ->map(function ($yearSubjects) {
+                    return $yearSubjects->groupBy('semester');
+                });
+        }
+
+        return response()->json([
+            'availableSubjects' => $availableSubjects
+        ]);
     }
 
 

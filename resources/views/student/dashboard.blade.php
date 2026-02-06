@@ -681,88 +681,96 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <section id="courses-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">My Courses</h2>
-                    <button class="btn-primary">Add/Drop Course</button>
+                    <button class="btn-primary" id="addDropCourseBtn">Add/Drop Course</button>
                 </div>
                 
-                <!-- <div class="courses-grid">
-                    <div class="course-card">
-                        <div class="course-header">
-                            <div class="course-code">CSC 301</div>
-                            <div class="course-name">Web Development</div>
-                            <div class="course-instructor">Prof. Maria Garcia</div>
-                        </div>
-                        <div class="course-body">
-                            <div class="course-schedule">
-                                <i class="fas fa-calendar"></i> Mon, Wed, Thu • 8:00-9:30 AM
+                <div class="courses-grid">
+                    @if(count($enrolledSubjects) > 0)
+                        @foreach($enrolledSubjects as $subject)
+                        <div class="course-card" data-subject-id="{{ $subject['subject_id'] }}">
+                            <div class="course-header">
+                                <div class="course-code">{{ $subject['subject_code'] }}</div>
+                                <div class="course-name">{{ $subject['subject_name'] }}</div>
+                                <div class="course-units">{{ $subject['units'] }} units</div>
                             </div>
-                            <div class="course-schedule">
-                                <i class="fas fa-map-marker-alt"></i> IT-101
-                            </div>
-                            <div class="course-progress">
-                                <div class="progress-header">
-                                    <span class="progress-label">Progress</span>
-                                    <span class="progress-value">92%</span>
+                            <div class="course-body">
+                                @if($subject['schedule'])
+                                <div class="course-schedule">
+                                    <i class="fas fa-calendar"></i> {{ $subject['schedule']['day'] }} • 
+                                    {{ \Carbon\Carbon::parse($subject['schedule']['start_time'])->format('g:i A') }}-{{ \Carbon\Carbon::parse($subject['schedule']['end_time'])->format('g:i A') }}
                                 </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 92%; background-color: var(--success);"></div>
+                                <div class="course-schedule">
+                                    <i class="fas fa-map-marker-alt"></i> {{ $subject['schedule']['room'] }}
+                                    <span class="badge">{{ $subject['schedule']['type'] }}</span>
                                 </div>
-                            </div>
-                            <button class="btn-outline" style="width: 100%;">View Course Details</button>
-                        </div>
-                    </div>
-                    
-                    <div class="course-card">
-                        <div class="course-header">
-                            <div class="course-code">CSC 305</div>
-                            <div class="course-name">Database Systems</div>
-                            <div class="course-instructor">Prof. Juan Santos</div>
-                        </div>
-                        <div class="course-body">
-                            <div class="course-schedule">
-                                <i class="fas fa-calendar"></i> Mon, Wed • 10:00-11:30 AM
-                            </div>
-                            <div class="course-schedule">
-                                <i class="fas fa-map-marker-alt"></i> CS Lab 2
-                            </div>
-                            <div class="course-progress">
-                                <div class="progress-header">
-                                    <span class="progress-label">Progress</span>
-                                    <span class="progress-value">88%</span>
+                                @endif
+                                
+                                <div class="course-grade">
+                                    <div class="grade-header">
+                                        <span class="grade-label">Current Grade</span>
+                                        <div class="grade-actions">
+                                            <span class="grade-value {{ $subject['grade'] >= 3.0 ? 'grade-fail' : 'grade-pass' }}">
+                                                {{ $subject['grade'] ? $subject['grade'] : 'No Grade' }}
+                                            </span>
+                                            <button class="btn-edit-grade" data-subject-id="{{ $subject['subject_id'] }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="grade-edit-form" id="gradeForm{{ $subject['subject_id'] }}" style="display: none;">
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-8">
+                                                <select class="form-select form-select-sm grade-select-edit" 
+                                                        id="gradeSelect{{ $subject['subject_id'] }}">
+                                                    <option value="">-- Select Grade --</option>
+                                                    @for($i = 1.0; $i <= 3.0; $i += 0.1)
+                                                        @php $grade = number_format($i, 1); @endphp
+                                                        <option value="{{ $grade }}" {{ $subject['grade'] == $grade ? 'selected' : '' }}>
+                                                            {{ $grade }}
+                                                        </option>
+                                                    @endfor
+                                                    <option value="4.0" {{ $subject['grade'] == '4.0' ? 'selected' : '' }}>4.0</option>
+                                                    <option value="5.0" {{ $subject['grade'] == '5.0' ? 'selected' : '' }}>5.0</option>
+                                                    <option value="INC" {{ $subject['grade'] == 'INC' ? 'selected' : '' }}>INC</option>
+                                                    <option value="DRP" {{ $subject['grade'] == 'DRP' ? 'selected' : '' }}>DRP</option>
+                                                    <option value="PASS" {{ $subject['grade'] == 'PASS' ? 'selected' : '' }}>PASS</option>
+                                                    <option value="FAIL" {{ $subject['grade'] == 'FAIL' ? 'selected' : '' }}>FAIL</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="d-flex gap-1">
+                                                    <button class="btn btn-sm btn-success save-grade" 
+                                                            data-subject-id="{{ $subject['subject_id'] }}">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-secondary cancel-edit" 
+                                                            data-subject-id="{{ $subject['subject_id'] }}">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 88%; background-color: var(--primary);"></div>
-                                </div>
+                                
+                                <button class="btn-outline view-details" style="width: 100%;" 
+                                        data-subject-id="{{ $subject['subject_id'] }}">
+                                    View Course Details
+                                </button>
                             </div>
-                            <button class="btn-outline" style="width: 100%;">View Course Details</button>
                         </div>
-                    </div>
-                    
-                    <div class="course-card">
-                        <div class="course-header">
-                            <div class="course-code">CSC 310</div>
-                            <div class="course-name">Software Engineering</div>
-                            <div class="course-instructor">Prof. Andrea Reyes</div>
+                        @endforeach
+                    @else
+                        <div class="no-courses">
+                            <div class="empty-state">
+                                <i class="fas fa-book-open fa-3x mb-3 text-muted"></i>
+                                <h4>No Courses Enrolled</h4>
+                                <p class="text-muted">You are not enrolled in any courses for this semester.</p>
+                                <button class="btn-primary mt-2" id="enrollNowBtn">Enroll Now</button>
+                            </div>
                         </div>
-                        <div class="course-body">
-                            <div class="course-schedule">
-                                <i class="fas fa-calendar"></i> Mon, Thu • 1:00-2:30 PM
-                            </div>
-                            <div class="course-schedule">
-                                <i class="fas fa-map-marker-alt"></i> Main 304
-                            </div>
-                            <div class="course-progress">
-                                <div class="progress-header">
-                                    <span class="progress-label">Progress</span>
-                                    <span class="progress-value">90%</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 90%; background-color: var(--accent);"></div>
-                                </div>
-                            </div>
-                            <button class="btn-outline" style="width: 100%;">View Course Details</button>
-                        </div>
-                    </div>
-                </div> -->
+                    @endif
+                </div>
             </section>
 
             <!-- Grades Content -->
@@ -1462,6 +1470,118 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             </div>
         </div>
         @endif
+
+        <!-- Add/Drop Course Modal -->
+        <div class="modal fade" id="addDropModal" tabindex="-1" aria-labelledby="addDropModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addDropModalLabel">Add/Drop Courses</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> You can add new courses or update grades for existing courses.
+                        </div>
+                        
+                        <!-- Tabs for Add/Drop -->
+                        <ul class="nav nav-tabs mb-4" id="addDropTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-tab-pane" type="button">
+                                    <i class="fas fa-plus-circle"></i> Add Courses
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="drop-tab" data-bs-toggle="tab" data-bs-target="#drop-tab-pane" type="button">
+                                    <i class="fas fa-minus-circle"></i> Drop Courses
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update-tab-pane" type="button">
+                                    <i class="fas fa-edit"></i> Update Grades
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="addDropTabsContent">
+                            <!-- Add Courses Tab -->
+                            <div class="tab-pane fade show active" id="add-tab-pane" role="tabpanel">
+                                <div id="addCoursesContent">
+                                    <!-- Content will be loaded dynamically -->
+                                    <div class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-2">Loading available courses...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Drop Courses Tab -->
+                            <div class="tab-pane fade" id="drop-tab-pane" role="tabpanel">
+                                <div id="dropCoursesContent">
+                                    <h6>Currently Enrolled Courses</h6>
+                                    <div id="enrolledCoursesList">
+                                        <!-- Will be populated with current enrolled courses -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Update Grades Tab -->
+                            <div class="tab-pane fade" id="update-tab-pane" role="tabpanel">
+                                <div id="updateGradesContent">
+                                    <h6>Update Grades for Enrolled Courses</h6>
+                                    <div id="gradesUpdateList">
+                                        <!-- Will be populated with enrolled courses for grade update -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Selected Courses Summary -->
+                        <div class="selected-courses-summary mt-4">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0"><i class="fas fa-list-check"></i> Selected Courses Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="selectedAddDropList" class="mb-3" style="max-height: 200px; overflow-y: auto;">
+                                        <p class="text-muted mb-0">No courses selected for action.</p>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="alert alert-secondary">
+                                                <small>Total Courses</small>
+                                                <h4 class="mb-0" id="addDropTotalCount">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="alert alert-info">
+                                                <small>Total Units</small>
+                                                <h4 class="mb-0" id="addDropTotalUnits">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="alert alert-warning">
+                                                <small>Action</small>
+                                                <h4 class="mb-0" id="addDropAction">Add</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="submitAddDrop" disabled>
+                            <i class="fas fa-check"></i> Submit Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
     </div>
     
 
@@ -1483,5 +1603,545 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
+    <script>
+        class CourseManager {
+            constructor() {
+                this.currentAction = 'add'; // 'add', 'drop', or 'update'
+                this.selectedSubjects = new Map(); // Map to store selected subjects with their data
+                this.enrolledSubjects = @json($enrolledSubjects); // Pass PHP data to JS
+                this.init();
+            }
+
+            init() {
+                // Initialize event listeners
+                this.initEventListeners();
+                this.loadEnrolledCourses();
+            }
+
+            initEventListeners() {
+                // Add/Drop Course Button
+                $('#addDropCourseBtn').on('click', () => this.openAddDropModal());
+                
+                // Enroll Now Button (when no courses)
+                $('#enrollNowBtn').on('click', () => $('#enrollmentModal').modal('show'));
+                
+                // Edit Grade Buttons
+                $(document).on('click', '.btn-edit-grade', (e) => {
+                    const subjectId = $(e.currentTarget).data('subject-id');
+                    this.toggleGradeEditForm(subjectId, true);
+                });
+                
+                $(document).on('click', '.cancel-edit', (e) => {
+                    const subjectId = $(e.currentTarget).data('subject-id');
+                    this.toggleGradeEditForm(subjectId, false);
+                });
+                
+                // Save Grade
+                $(document).on('click', '.save-grade', (e) => {
+                    const subjectId = $(e.currentTarget).data('subject-id');
+                    this.saveGrade(subjectId);
+                });
+                
+                // Add/Drop Modal Tab Changes
+                $('#addDropTabs button').on('shown.bs.tab', (e) => {
+                    const target = $(e.target).data('bs-target');
+                    this.switchTab(target);
+                });
+                
+                // Submit Add/Drop Changes
+                $('#submitAddDrop').on('click', () => this.submitAddDropChanges());
+            }
+
+            openAddDropModal() {
+                // Reset selections
+                this.selectedSubjects.clear();
+                this.updateSelectionSummary();
+                
+                // Load current enrolled courses for drop and update tabs
+                this.loadEnrolledCoursesForModal();
+                
+                // Load available courses for add tab
+                this.loadAvailableCourses();
+                
+                // Show modal
+                $('#addDropModal').modal('show');
+            }
+
+            switchTab(tabId) {
+                switch(tabId) {
+                    case '#add-tab-pane':
+                        this.currentAction = 'add';
+                        break;
+                    case '#drop-tab-pane':
+                        this.currentAction = 'drop';
+                        break;
+                    case '#update-tab-pane':
+                        this.currentAction = 'update';
+                        break;
+                }
+                $('#addDropAction').text(this.currentAction.charAt(0).toUpperCase() + this.currentAction.slice(1));
+            }
+
+            loadEnrolledCourses() {
+                // This populates the main courses grid (already done by PHP)
+                // We'll use this data for the modal
+            }
+
+            loadEnrolledCoursesForModal() {
+                const dropContent = $('#enrolledCoursesList');
+                const updateContent = $('#gradesUpdateList');
+                
+                dropContent.empty();
+                updateContent.empty();
+                
+                if (this.enrolledSubjects.length === 0) {
+                    dropContent.html('<div class="alert alert-info">No enrolled courses to drop.</div>');
+                    updateContent.html('<div class="alert alert-info">No enrolled courses to update.</div>');
+                    return;
+                }
+                
+                // Populate drop courses
+                let dropHtml = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+                    '<th width="50">Select</th><th>Code</th><th>Subject</th><th>Units</th><th>Current Grade</th>' +
+                    '</tr></thead><tbody>';
+                
+                // Populate update grades
+                let updateHtml = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+                    '<th>Code</th><th>Subject</th><th>Units</th><th>Current Grade</th><th>New Grade</th><th>Action</th>' +
+                    '</tr></thead><tbody>';
+                
+                this.enrolledSubjects.forEach(subject => {
+                    // Drop courses row
+                    dropHtml += `<tr>
+                        <td><input type="checkbox" class="form-check-input drop-checkbox" 
+                            data-subject-id="${subject.subject_id}"
+                            data-code="${subject.subject_code}"
+                            data-name="${subject.subject_name}"
+                            data-units="${subject.units}"></td>
+                        <td>${subject.subject_code}</td>
+                        <td>${subject.subject_name}</td>
+                        <td>${subject.units}</td>
+                        <td>${subject.grade || 'No Grade'}</td>
+                    </tr>`;
+                    
+                    // Update grades row
+                    updateHtml += `<tr>
+                        <td>${subject.subject_code}</td>
+                        <td>${subject.subject_name}</td>
+                        <td>${subject.units}</td>
+                        <td>${subject.grade || 'No Grade'}</td>
+                        <td>
+                            <select class="form-select form-select-sm update-grade-select" 
+                                data-subject-id="${subject.subject_id}">
+                                <option value="">-- Select --</option>
+                                ${this.generateGradeOptions(subject.grade)}
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary update-grade-btn" 
+                                data-subject-id="${subject.subject_id}">
+                                <i class="fas fa-save"></i> Update
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                
+                dropHtml += '</tbody></table></div>';
+                updateHtml += '</tbody></table></div>';
+                
+                dropContent.html(dropHtml);
+                updateContent.html(updateHtml);
+                
+                // Add event listeners for drop checkboxes
+                $('.drop-checkbox').on('change', (e) => this.handleDropSelection(e));
+                
+                // Add event listeners for update buttons
+                $('.update-grade-btn').on('click', (e) => this.handleGradeUpdateInModal(e));
+            }
+
+            loadAvailableCourses() {
+                const content = $('#addCoursesContent');
+                
+                // Show loading
+                content.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Loading available courses...</p></div>');
+                
+                // Fetch available courses via AJAX
+                $.ajax({
+                    url: '/student/enrolled-subjects?action=available',
+                    type: 'GET',
+                    success: (response) => {
+                        this.renderAvailableCourses(response.availableSubjects);
+                    },
+                    error: (xhr) => {
+                        content.html('<div class="alert alert-danger">Failed to load available courses. Please try again.</div>');
+                    }
+                });
+            }
+
+            renderAvailableCourses(availableSubjects) {
+                let html = '';
+                
+                if (!availableSubjects || Object.keys(availableSubjects).length === 0) {
+                    html = '<div class="alert alert-info">No available courses to add at this time.</div>';
+                } else {
+                    // Similar structure to enrollment modal
+                    html = '<div class="mb-3"><input type="text" class="form-control" id="courseSearch" placeholder="Search courses..."></div>';
+                    
+                    for (const [yearLevel, semesters] of Object.entries(availableSubjects)) {
+                        html += `<div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">${yearLevel}</h6>
+                            </div>
+                            <div class="card-body">`;
+                        
+                        for (const [semester, subjects] of Object.entries(semesters)) {
+                            html += `<h6 class="text-muted">${semester}</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th width="50">Add</th>
+                                                <th>Code</th>
+                                                <th>Subject</th>
+                                                <th>Units</th>
+                                                <th>Grade</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
+                            
+                            subjects.forEach(subject => {
+                                html += `<tr>
+                                    <td><input type="checkbox" class="form-check-input add-checkbox" 
+                                        data-subject-id="${subject.id}"
+                                        data-code="${subject.code}"
+                                        data-name="${subject.name}"
+                                        data-units="${subject.units}"></td>
+                                    <td>${subject.code}</td>
+                                    <td>${subject.name}</td>
+                                    <td>${subject.units}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm add-grade-select" 
+                                            data-subject-id="${subject.id}">
+                                            <option value="">-- Select --</option>
+                                            ${this.generateGradeOptions()}
+                                        </select>
+                                    </td>
+                                </tr>`;
+                            });
+                            
+                            html += '</tbody></table></div>';
+                        }
+                        
+                        html += '</div></div>';
+                    }
+                    
+                    // Add search functionality
+                    setTimeout(() => {
+                        $('#courseSearch').on('keyup', function() {
+                            const searchTerm = $(this).val().toLowerCase();
+                            $('.add-checkbox').each(function() {
+                                const row = $(this).closest('tr');
+                                const code = row.find('td:nth-child(2)').text().toLowerCase();
+                                const name = row.find('td:nth-child(3)').text().toLowerCase();
+                                
+                                if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                                    row.show();
+                                } else {
+                                    row.hide();
+                                }
+                            });
+                        });
+                        
+                        // Add checkbox event listeners
+                        $('.add-checkbox').on('change', (e) => this.handleAddSelection(e));
+                    }, 100);
+                }
+                
+                $('#addCoursesContent').html(html);
+            }
+
+            handleAddSelection(e) {
+                const checkbox = $(e.currentTarget);
+                const subjectId = checkbox.data('subject-id');
+                const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
+                
+                if (checkbox.is(':checked')) {
+                    const grade = gradeSelect.val();
+                    if (!grade) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Grade Required',
+                            text: 'Please select a grade before adding this course.',
+                        });
+                        checkbox.prop('checked', false);
+                        return;
+                    }
+                    
+                    this.selectedSubjects.set(subjectId, {
+                        action: 'add',
+                        subject_id: subjectId,
+                        code: checkbox.data('code'),
+                        name: checkbox.data('name'),
+                        units: checkbox.data('units'),
+                        grade: grade
+                    });
+                    
+                    gradeSelect.prop('disabled', true);
+                } else {
+                    this.selectedSubjects.delete(subjectId);
+                    gradeSelect.prop('disabled', false).val('');
+                }
+                
+                this.updateSelectionSummary();
+            }
+
+            handleDropSelection(e) {
+                const checkbox = $(e.currentTarget);
+                const subjectId = checkbox.data('subject-id');
+                
+                if (checkbox.is(':checked')) {
+                    this.selectedSubjects.set(subjectId, {
+                        action: 'drop',
+                        subject_id: subjectId,
+                        code: checkbox.data('code'),
+                        name: checkbox.data('name'),
+                        units: checkbox.data('units')
+                    });
+                } else {
+                    this.selectedSubjects.delete(subjectId);
+                }
+                
+                this.updateSelectionSummary();
+            }
+
+            handleGradeUpdateInModal(e) {
+                const button = $(e.currentTarget);
+                const subjectId = button.data('subject-id');
+                const gradeSelect = $(`.update-grade-select[data-subject-id="${subjectId}"]`);
+                const grade = gradeSelect.val();
+                
+                if (!grade) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Grade Required',
+                        text: 'Please select a grade.',
+                    });
+                    return;
+                }
+                
+                this.selectedSubjects.set(subjectId, {
+                    action: 'update',
+                    subject_id: subjectId,
+                    grade: grade
+                });
+                
+                button.html('<i class="fas fa-check"></i> Updated');
+                button.removeClass('btn-primary').addClass('btn-success');
+                button.prop('disabled', true);
+                
+                this.updateSelectionSummary();
+            }
+
+            updateSelectionSummary() {
+                const summaryList = $('#selectedAddDropList');
+                const totalCount = $('#addDropTotalCount');
+                const totalUnits = $('#addDropTotalUnits');
+                const submitBtn = $('#submitAddDrop');
+                
+                if (this.selectedSubjects.size === 0) {
+                    summaryList.html('<p class="text-muted mb-0">No courses selected for action.</p>');
+                    totalCount.text('0');
+                    totalUnits.text('0');
+                    submitBtn.prop('disabled', true);
+                    return;
+                }
+                
+                let html = '<ul class="list-group list-group-flush">';
+                let totalUnitsCount = 0;
+                
+                this.selectedSubjects.forEach((subject, subjectId) => {
+                    const actionBadge = subject.action === 'add' ? 
+                        '<span class="badge bg-success">Add</span>' : 
+                        subject.action === 'drop' ? 
+                        '<span class="badge bg-danger">Drop</span>' : 
+                        '<span class="badge bg-warning">Update</span>';
+                    
+                    html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            ${actionBadge}
+                            <strong>${subject.code || ''}</strong> - ${subject.name || 'Grade Update'}
+                            ${subject.units ? `(${subject.units} units)` : ''}
+                            ${subject.grade ? `<span class="text-muted ms-2">Grade: ${subject.grade}</span>` : ''}
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger remove-selection" 
+                            data-subject-id="${subjectId}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </li>`;
+                    
+                    totalUnitsCount += parseFloat(subject.units) || 0;
+                });
+                
+                html += '</ul>';
+                
+                summaryList.html(html);
+                totalCount.text(this.selectedSubjects.size);
+                totalUnits.text(totalUnitsCount);
+                submitBtn.prop('disabled', false);
+                
+                // Add remove selection event listeners
+                $('.remove-selection').on('click', (e) => this.removeSelection(e));
+            }
+
+            removeSelection(e) {
+                const button = $(e.currentTarget);
+                const subjectId = button.data('subject-id');
+                
+                this.selectedSubjects.delete(subjectId);
+                
+                // Reset UI elements
+                $(`.add-checkbox[data-subject-id="${subjectId}"]`).prop('checked', false);
+                $(`.add-grade-select[data-subject-id="${subjectId}"]`).prop('disabled', false).val('');
+                
+                $(`.drop-checkbox[data-subject-id="${subjectId}"]`).prop('checked', false);
+                
+                $(`.update-grade-btn[data-subject-id="${subjectId}"]`)
+                    .html('<i class="fas fa-save"></i> Update')
+                    .removeClass('btn-success').addClass('btn-primary')
+                    .prop('disabled', false);
+                
+                this.updateSelectionSummary();
+            }
+
+            submitAddDropChanges() {
+                if (this.selectedSubjects.size === 0) {
+                    return;
+                }
+                
+                const changes = Array.from(this.selectedSubjects.values());
+                
+                Swal.fire({
+                    title: 'Confirm Changes',
+                    html: `You are about to submit ${changes.length} change(s).<br>
+                        This action cannot be undone.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, submit changes',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.processAddDropChanges(changes);
+                    }
+                });
+            }
+
+            processAddDropChanges(changes) {
+                $.ajax({
+                    url: '/student/update-subjects',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        changes: changes
+                    },
+                    success: (response) => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Your changes have been submitted successfully.',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).then(() => {
+                            $('#addDropModal').modal('hide');
+                            location.reload(); // Reload to show updated courses
+                        });
+                    },
+                    error: (xhr) => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.error || 'Failed to submit changes.',
+                        });
+                    }
+                });
+            }
+
+            toggleGradeEditForm(subjectId, show) {
+                $(`#gradeForm${subjectId}`).toggle(show);
+                $(`.btn-edit-grade[data-subject-id="${subjectId}"]`).toggle(!show);
+            }
+
+            saveGrade(subjectId) {
+                const grade = $(`#gradeSelect${subjectId}`).val();
+                
+                if (!grade) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Grade Required',
+                        text: 'Please select a grade.',
+                    });
+                    return;
+                }
+                
+                $.ajax({
+                    url: '/student/update-grade',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        subject_id: subjectId,
+                        grade: grade
+                    },
+                    success: (response) => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Grade updated successfully.',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            // Update the displayed grade
+                            $(`.grade-value[data-subject-id="${subjectId}"]`).text(grade);
+                            this.toggleGradeEditForm(subjectId, false);
+                            // Update the local data
+                            const subjectIndex = this.enrolledSubjects.findIndex(s => s.subject_id == subjectId);
+                            if (subjectIndex !== -1) {
+                                this.enrolledSubjects[subjectIndex].grade = grade;
+                            }
+                        });
+                    },
+                    error: (xhr) => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.error || 'Failed to update grade.',
+                        });
+                    }
+                });
+            }
+
+            generateGradeOptions(currentGrade = '') {
+                let options = '';
+                
+                // Generate grades from 1.0 to 3.0
+                for (let i = 1.0; i <= 3.0; i += 0.1) {
+                    const grade = i.toFixed(1);
+                    const selected = grade === currentGrade ? 'selected' : '';
+                    options += `<option value="${grade}" ${selected}>${grade}</option>`;
+                }
+                
+                // Add special grades
+                const specialGrades = ['4.0', '5.0', 'INC', 'DRP', 'PASS', 'FAIL'];
+                specialGrades.forEach(grade => {
+                    const selected = grade === currentGrade ? 'selected' : '';
+                    options += `<option value="${grade}" ${selected}>${grade}</option>`;
+                });
+                
+                return options;
+            }
+        }
+
+        $(document).ready(function() {
+            window.courseManager = new CourseManager();
+        });
+    </script>
 </body>
 </html>
