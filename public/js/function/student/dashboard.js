@@ -1208,7 +1208,553 @@ function showToast(message, type = 'success') {
                 calculateGWA: calculateGWA
             };
         }
+
+
+        // CourseManager Class
+class CourseManager {
+    constructor(studentData = {}) {
+        this.currentAction = 'add';
+        this.selectedSubjects = new Map();
+        this.enrolledSubjects = studentData.enrolledSubjects || [];
+        this.csrfToken = studentData.csrfToken || '';
+        this.baseUrl = studentData.baseUrl || '';
+        this.init();
+    }
+
+    init() {
+        this.initEventListeners();
+        this.loadEnrolledCourses();
+    }
+
+    initEventListeners() {
+        // Add/Drop Course Button
+        $(document).on('click', '#addDropCourseBtn', () => this.openAddDropModal());
         
+        // Enroll Now Button (when no courses)
+        $(document).on('click', '#enrollNowBtn', () => $('#enrollmentModal').modal('show'));
+        
+        // Edit Grade Buttons
+        $(document).on('click', '.btn-edit-grade', (e) => {
+            const subjectId = $(e.currentTarget).data('subject-id');
+            this.toggleGradeEditForm(subjectId, true);
+        });
+        
+        $(document).on('click', '.cancel-edit', (e) => {
+            const subjectId = $(e.currentTarget).data('subject-id');
+            this.toggleGradeEditForm(subjectId, false);
+        });
+        
+        // Save Grade
+        $(document).on('click', '.save-grade', (e) => {
+            const subjectId = $(e.currentTarget).data('subject-id');
+            this.saveGrade(subjectId);
+        });
+        
+        // Add/Drop Modal Tab Changes
+        $(document).on('shown.bs.tab', '#addDropTabs button', (e) => {
+            const target = $(e.target).data('bs-target');
+            this.switchTab(target);
+        });
+        
+        // Submit Add/Drop Changes
+        $(document).on('click', '#submitAddDrop', () => this.submitAddDropChanges());
+    }
+
+    openAddDropModal() {
+        // Reset selections
+        this.selectedSubjects.clear();
+        this.updateSelectionSummary();
+        
+        // Load current enrolled courses for drop and update tabs
+        this.loadEnrolledCoursesForModal();
+        
+        // Load available courses for add tab
+        this.loadAvailableCourses();
+        
+        // Show modal
+        $('#addDropModal').modal('show');
+    }
+
+    switchTab(tabId) {
+        switch(tabId) {
+            case '#add-tab-pane':
+                this.currentAction = 'add';
+                break;
+            case '#drop-tab-pane':
+                this.currentAction = 'drop';
+                break;
+            case '#update-tab-pane':
+                this.currentAction = 'update';
+                break;
+        }
+        $('#addDropAction').text(this.currentAction.charAt(0).toUpperCase() + this.currentAction.slice(1));
+    }
+
+    loadEnrolledCourses() {
+        // This method is called during initialization
+        // The data is already loaded from PHP via the hidden div
+    }
+
+    loadEnrolledCoursesForModal() {
+        const dropContent = $('#enrolledCoursesList');
+        const updateContent = $('#gradesUpdateList');
+        
+        dropContent.empty();
+        updateContent.empty();
+        
+        if (this.enrolledSubjects.length === 0) {
+            dropContent.html('<div class="alert alert-info">No enrolled courses to drop.</div>');
+            updateContent.html('<div class="alert alert-info">No enrolled courses to update.</div>');
+            return;
+        }
+        
+        // Populate drop courses
+        let dropHtml = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+            '<th width="50">Select</th><th>Code</th><th>Subject</th><th>Units</th><th>Current Grade</th>' +
+            '</tr></thead><tbody>';
+        
+        // Populate update grades
+        let updateHtml = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+            '<th>Code</th><th>Subject</th><th>Units</th><th>Current Grade</th><th>New Grade</th><th>Action</th>' +
+            '</tr></thead><tbody>';
+        
+        this.enrolledSubjects.forEach(subject => {
+            // Drop courses row
+            dropHtml += `<tr>
+                <td><input type="checkbox" class="form-check-input drop-checkbox" 
+                    data-subject-id="${subject.subject_id}"
+                    data-code="${subject.subject_code}"
+                    data-name="${subject.subject_name}"
+                    data-units="${subject.units}"></td>
+                <td>${subject.subject_code}</td>
+                <td>${subject.subject_name}</td>
+                <td>${subject.units}</td>
+                <td>${subject.grade || 'No Grade'}</td>
+            </tr>`;
+            
+            // Update grades row
+            updateHtml += `<tr>
+                <td>${subject.subject_code}</td>
+                <td>${subject.subject_name}</td>
+                <td>${subject.units}</td>
+                <td>${subject.grade || 'No Grade'}</td>
+                <td>
+                    <select class="form-select form-select-sm update-grade-select" 
+                        data-subject-id="${subject.subject_id}">
+                        <option value="">-- Select --</option>
+                        ${this.generateGradeOptions(subject.grade)}
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary update-grade-btn" 
+                        data-subject-id="${subject.subject_id}">
+                        <i class="fas fa-save"></i> Update
+                    </button>
+                </td>
+            </tr>`;
+        });
+        
+        dropHtml += '</tbody></table></div>';
+        updateHtml += '</tbody></table></div>';
+        
+        dropContent.html(dropHtml);
+        updateContent.html(updateHtml);
+        
+        // Add event listeners for drop checkboxes
+        $(document).off('change', '.drop-checkbox').on('change', '.drop-checkbox', (e) => this.handleDropSelection(e));
+        
+        // Add event listeners for update buttons
+        $(document).off('click', '.update-grade-btn').on('click', '.update-grade-btn', (e) => this.handleGradeUpdateInModal(e));
+    }
+
+    loadAvailableCourses() {
+        const content = $('#addCoursesContent');
+        
+        // Show loading
+        content.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Loading available courses...</p></div>');
+        
+        // Fetch available courses via AJAX
+        $.ajax({
+            url: '/student/available-subjects',
+            type: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': this.csrfToken
+            },
+            success: (response) => {
+                this.renderAvailableCourses(response.availableSubjects);
+            },
+            error: (xhr) => {
+                content.html('<div class="alert alert-danger">Failed to load available courses. Please try again.</div>');
+            }
+        });
+    }
+
+    renderAvailableCourses(availableSubjects) {
+        let html = '';
+        
+        if (!availableSubjects || Object.keys(availableSubjects).length === 0) {
+            html = '<div class="alert alert-info">No available courses to add at this time.</div>';
+        } else {
+            html = '<div class="mb-3"><input type="text" class="form-control" id="courseSearch" placeholder="Search courses..."></div>';
+            
+            for (const [yearLevel, semesters] of Object.entries(availableSubjects)) {
+                html += `<div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">${yearLevel}</h6>
+                    </div>
+                    <div class="card-body">`;
+                
+                for (const [semester, subjects] of Object.entries(semesters)) {
+                    html += `<h6 class="text-muted">${semester}</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th width="50">Add</th>
+                                        <th>Code</th>
+                                        <th>Subject</th>
+                                        <th>Units</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                    
+                    subjects.forEach(subject => {
+                        html += `<tr>
+                            <td><input type="checkbox" class="form-check-input add-checkbox" 
+                                data-subject-id="${subject.id}"
+                                data-code="${subject.code}"
+                                data-name="${subject.name}"
+                                data-units="${subject.units}"></td>
+                            <td>${subject.code}</td>
+                            <td>${subject.name}</td>
+                            <td>${subject.units}</td>
+                            <td>
+                                <select class="form-select form-select-sm add-grade-select" 
+                                    data-subject-id="${subject.id}">
+                                    <option value="">-- Select --</option>
+                                    ${this.generateGradeOptions()}
+                                </select>
+                            </td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                }
+                
+                html += '</div></div>';
+            }
+            
+            // Add search functionality
+            setTimeout(() => {
+                $('#courseSearch').on('keyup', function() {
+                    const searchTerm = $(this).val().toLowerCase();
+                    $('.add-checkbox').each(function() {
+                        const row = $(this).closest('tr');
+                        const code = row.find('td:nth-child(2)').text().toLowerCase();
+                        const name = row.find('td:nth-child(3)').text().toLowerCase();
+                        
+                        if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                            row.show();
+                        } else {
+                            row.hide();
+                        }
+                    });
+                });
+                
+                // Add checkbox event listeners
+                $(document).off('change', '.add-checkbox').on('change', '.add-checkbox', (e) => this.handleAddSelection(e));
+            }, 100);
+        }
+        
+        $('#addCoursesContent').html(html);
+    }
+
+    handleAddSelection(e) {
+        const checkbox = $(e.currentTarget);
+        const subjectId = checkbox.data('subject-id');
+        const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
+        
+        if (checkbox.is(':checked')) {
+            const grade = gradeSelect.val();
+            if (!grade) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Grade Required',
+                    text: 'Please select a grade before adding this course.',
+                });
+                checkbox.prop('checked', false);
+                return;
+            }
+            
+            this.selectedSubjects.set(subjectId, {
+                action: 'add',
+                subject_id: subjectId,
+                code: checkbox.data('code'),
+                name: checkbox.data('name'),
+                units: checkbox.data('units'),
+                grade: grade
+            });
+            
+            gradeSelect.prop('disabled', true);
+        } else {
+            this.selectedSubjects.delete(subjectId);
+            gradeSelect.prop('disabled', false).val('');
+        }
+        
+        this.updateSelectionSummary();
+    }
+
+    handleDropSelection(e) {
+        const checkbox = $(e.currentTarget);
+        const subjectId = checkbox.data('subject-id');
+        
+        if (checkbox.is(':checked')) {
+            this.selectedSubjects.set(subjectId, {
+                action: 'drop',
+                subject_id: subjectId,
+                code: checkbox.data('code'),
+                name: checkbox.data('name'),
+                units: checkbox.data('units')
+            });
+        } else {
+            this.selectedSubjects.delete(subjectId);
+        }
+        
+        this.updateSelectionSummary();
+    }
+
+    handleGradeUpdateInModal(e) {
+        const button = $(e.currentTarget);
+        const subjectId = button.data('subject-id');
+        const gradeSelect = $(`.update-grade-select[data-subject-id="${subjectId}"]`);
+        const grade = gradeSelect.val();
+        
+        if (!grade) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Grade Required',
+                text: 'Please select a grade.',
+            });
+            return;
+        }
+        
+        this.selectedSubjects.set(subjectId, {
+            action: 'update',
+            subject_id: subjectId,
+            grade: grade
+        });
+        
+        button.html('<i class="fas fa-check"></i> Updated');
+        button.removeClass('btn-primary').addClass('btn-success');
+        button.prop('disabled', true);
+        
+        this.updateSelectionSummary();
+    }
+
+    updateSelectionSummary() {
+        const summaryList = $('#selectedAddDropList');
+        const totalCount = $('#addDropTotalCount');
+        const totalUnits = $('#addDropTotalUnits');
+        const submitBtn = $('#submitAddDrop');
+        
+        if (this.selectedSubjects.size === 0) {
+            summaryList.html('<p class="text-muted mb-0">No courses selected for action.</p>');
+            totalCount.text('0');
+            totalUnits.text('0');
+            submitBtn.prop('disabled', true);
+            return;
+        }
+        
+        let html = '<ul class="list-group list-group-flush">';
+        let totalUnitsCount = 0;
+        
+        this.selectedSubjects.forEach((subject, subjectId) => {
+            const actionBadge = subject.action === 'add' ? 
+                '<span class="badge bg-success">Add</span>' : 
+                subject.action === 'drop' ? 
+                '<span class="badge bg-danger">Drop</span>' : 
+                '<span class="badge bg-warning">Update</span>';
+            
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    ${actionBadge}
+                    <strong>${subject.code || ''}</strong> - ${subject.name || 'Grade Update'}
+                    ${subject.units ? `(${subject.units} units)` : ''}
+                    ${subject.grade ? `<span class="text-muted ms-2">Grade: ${subject.grade}</span>` : ''}
+                </div>
+                <button class="btn btn-sm btn-outline-danger remove-selection" 
+                    data-subject-id="${subjectId}">
+                    <i class="fas fa-times"></i>
+                </button>
+            </li>`;
+            
+            totalUnitsCount += parseFloat(subject.units) || 0;
+        });
+        
+        html += '</ul>';
+        
+        summaryList.html(html);
+        totalCount.text(this.selectedSubjects.size);
+        totalUnits.text(totalUnitsCount);
+        submitBtn.prop('disabled', false);
+        
+        // Add remove selection event listeners
+        $(document).off('click', '.remove-selection').on('click', '.remove-selection', (e) => this.removeSelection(e));
+    }
+
+    removeSelection(e) {
+        const button = $(e.currentTarget);
+        const subjectId = button.data('subject-id');
+        
+        this.selectedSubjects.delete(subjectId);
+        
+        // Reset UI elements
+        $(`.add-checkbox[data-subject-id="${subjectId}"]`).prop('checked', false);
+        $(`.add-grade-select[data-subject-id="${subjectId}"]`).prop('disabled', false).val('');
+        
+        $(`.drop-checkbox[data-subject-id="${subjectId}"]`).prop('checked', false);
+        
+        $(`.update-grade-btn[data-subject-id="${subjectId}"]`)
+            .html('<i class="fas fa-save"></i> Update')
+            .removeClass('btn-success').addClass('btn-primary')
+            .prop('disabled', false);
+        
+        this.updateSelectionSummary();
+    }
+
+    submitAddDropChanges() {
+        if (this.selectedSubjects.size === 0) {
+            return;
+        }
+        
+        const changes = Array.from(this.selectedSubjects.values());
+        
+        Swal.fire({
+            title: 'Confirm Changes',
+            html: `You are about to submit ${changes.length} change(s).<br>
+                This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, submit changes',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.processAddDropChanges(changes);
+            }
+        });
+    }
+
+    processAddDropChanges(changes) {
+        $.ajax({
+            url: this.baseUrl + '/student/submit-add-drop',
+            type: 'POST',
+            data: {
+                _token: this.csrfToken,
+                changes: changes
+            },
+            success: (response) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: response.message || 'Your changes have been submitted successfully.',
+                    showConfirmButton: false,
+                    timer: 2000
+                }).then(() => {
+                    $('#addDropModal').modal('hide');
+                    location.reload();
+                });
+            },
+            error: (xhr) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.message || 'Failed to submit changes.',
+                });
+            }
+        });
+    }
+
+    toggleGradeEditForm(subjectId, show) {
+        $(`#gradeForm${subjectId}`).toggle(show);
+        $(`.btn-edit-grade[data-subject-id="${subjectId}"]`).toggle(!show);
+    }
+
+    saveGrade(subjectId) {
+        const grade = $(`#gradeSelect${subjectId}`).val();
+        
+        if (!grade) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Grade Required',
+                text: 'Please select a grade.',
+            });
+            return;
+        }
+        
+        $.ajax({
+            url: this.baseUrl + '/student/update-grade',
+            type: 'POST',
+            data: {
+                _token: this.csrfToken,
+                subject_id: subjectId,
+                grade: grade
+            },
+            success: (response) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: response.message || 'Grade updated successfully.',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    // Update the displayed grade
+                    const gradeElement = $(`.btn-edit-grade[data-subject-id="${subjectId}"]`)
+                        .closest('.grade-actions')
+                        .find('.grade-value');
+                    gradeElement.text(grade);
+                    gradeElement.removeClass('grade-pass grade-fail')
+                        .addClass(grade >= 3.0 ? 'grade-fail' : 'grade-pass');
+                    
+                    this.toggleGradeEditForm(subjectId, false);
+                    
+                    // Update the local data
+                    const subjectIndex = this.enrolledSubjects.findIndex(s => s.subject_id == subjectId);
+                    if (subjectIndex !== -1) {
+                        this.enrolledSubjects[subjectIndex].grade = grade;
+                    }
+                });
+            },
+            error: (xhr) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.message || 'Failed to update grade.',
+                });
+            }
+        });
+    }
+
+    generateGradeOptions(currentGrade = '') {
+        let options = '';
+        
+        // Generate grades from 1.0 to 3.0
+        for (let i = 1.0; i <= 3.0; i += 0.1) {
+            const grade = i.toFixed(1);
+            const selected = grade === currentGrade ? 'selected' : '';
+            options += `<option value="${grade}" ${selected}>${grade}</option>`;
+        }
+        
+        // Add special grades
+        const specialGrades = ['4.0', '5.0', 'INC', 'DRP', 'PASS', 'FAIL'];
+        specialGrades.forEach(grade => {
+            const selected = grade === currentGrade ? 'selected' : '';
+            options += `<option value="${grade}" ${selected}>${grade}</option>`;
+        });
+        
+        return options;
+    }
+}
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -1227,6 +1773,11 @@ function showToast(message, type = 'success') {
             document.querySelector('.notification-btn').addEventListener('click', function() {
                 alert('You have 3 new notifications:\n- New grade posted for Web Development\n- Assignment due tomorrow\n- Campus event registration reminder');
             });
+
+            // Initialize CourseManager with data from STUDENT_DATA global variable
+            if (typeof window.STUDENT_DATA !== 'undefined') {
+                window.courseManager = new CourseManager(window.STUDENT_DATA.enrolledSubjects);
+            }
             
             // Quick links interaction
             const quickLinks = document.querySelectorAll('.quick-link');

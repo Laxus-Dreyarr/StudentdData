@@ -64,6 +64,7 @@ Route::middleware(['student.auth'])->group(function () {
     Route::get('/student/probation/terms', [StudentController::class, 'getProbationTerms']);
 
 
+
     Route::post('/student/update-grade', [StudentController::class, 'updateSubjectGrade']);
     Route::post('/student/update-subjects', [StudentController::class, 'updateSubjects']);
     Route::get('/student/enrolled-subjects', [StudentController::class, 'getEnrolledSubjects']);
