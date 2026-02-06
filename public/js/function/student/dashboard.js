@@ -1389,51 +1389,104 @@ class CourseManager {
         });
     }
 
-    
+
     renderAvailableCourses(availableSubjects) {
         let html = '';
         
         if (!availableSubjects || Object.keys(availableSubjects).length === 0) {
             html = '<div class="alert alert-info">No available courses to add at this time.</div>';
         } else {
-            // Similar structure to enrollment modal
-            html = '<div class="mb-3"><input type="text" class="form-control" id="courseSearch" placeholder="Search courses..."></div>';
+            // Search bar
+            html = '<div class="mb-3">' +
+                    '<input type="text" class="form-control" id="courseSearch" placeholder="Search by course code or name...">' +
+                    '<small class="text-muted">Type to filter courses</small>' +
+                '</div>';
             
+            // Control buttons
+            html += '<div class="mb-3 d-flex gap-2">' +
+                    '<button class="btn btn-sm btn-outline-secondary" id="expandAllYears">' +
+                        '<i class="fas fa-expand"></i> Expand All' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" id="collapseAllYears">' +
+                        '<i class="fas fa-compress"></i> Collapse All' +
+                    '</button>' +
+                    '</div>';
+            
+            // Year Level Accordion
+            html += '<div class="accordion" id="yearLevelAccordion">';
+            
+            let yearIndex = 1;
             for (const [yearLevel, semesters] of Object.entries(availableSubjects)) {
-                html += `<div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">${yearLevel}</h6>
-                    </div>
-                    <div class="card-body">`;
+                const yearId = `year-${yearIndex}`;
+                const yearCollapseId = `collapse-${yearIndex}`;
                 
+                html += `<div class="accordion-item">
+                    <h2 class="accordion-header" id="${yearId}">
+                        <button class="accordion-button ${yearIndex === 1 ? '' : 'collapsed'}" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#${yearCollapseId}" 
+                                aria-expanded="${yearIndex === 1 ? 'true' : 'false'}" 
+                                aria-controls="${yearCollapseId}">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            <strong>${yearLevel}</strong>
+                            <span class="badge bg-secondary ms-2">${Object.keys(semesters).length} semesters</span>
+                        </button>
+                    </h2>
+                    <div id="${yearCollapseId}" class="accordion-collapse collapse ${yearIndex === 1 ? 'show' : ''}" 
+                        aria-labelledby="${yearId}" data-bs-parent="#yearLevelAccordion">
+                        <div class="accordion-body p-3">`;
+                
+                let semesterIndex = 1;
                 for (const [semester, subjects] of Object.entries(semesters)) {
-                    html += `<h6 class="text-muted">${semester}</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th width="50">Add</th>
-                                        <th>Code</th>
-                                        <th>Subject</th>
-                                        <th>Units</th>
-                                        <th>Grade</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
+                    const semesterId = `semester-${yearIndex}-${semesterIndex}`;
+                    const semesterCollapseId = `collapse-semester-${yearIndex}-${semesterIndex}`;
+                    
+                    html += `<div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <button class="btn btn-link text-decoration-none p-0" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#${semesterCollapseId}"
+                                        aria-expanded="true" aria-controls="${semesterCollapseId}">
+                                    <i class="fas fa-chevron-down me-2"></i>
+                                    ${semester}
+                                    <span class="badge bg-info ms-2">${subjects.length} subjects</span>
+                                </button>
+                            </h6>
+                        </div>
+                        <div id="${semesterCollapseId}" class="collapse show">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0 semester-table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th width="50">Add</th>
+                                                <th>Code</th>
+                                                <th>Subject Name</th>
+                                                <th width="80">Units</th>
+                                                <th width="150">Grade</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
                     
                     subjects.forEach(subject => {
-                        html += `<tr>
-                            <td><input type="checkbox" class="form-check-input add-checkbox" 
-                                data-subject-id="${subject.id}"
-                                data-code="${subject.code}"
-                                data-name="${subject.name}"
-                                data-units="${subject.units}"></td>
-                            <td>${subject.code}</td>
-                            <td>${subject.name}</td>
-                            <td>${subject.units}</td>
+                        html += `<tr class="subject-row" data-code="${subject.code.toLowerCase()}" 
+                                            data-name="${subject.name.toLowerCase()}">
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input add-checkbox" 
+                                    data-subject-id="${subject.id}"
+                                    data-code="${subject.code}"
+                                    data-name="${subject.name}"
+                                    data-units="${subject.units}"
+                                    style="cursor: pointer;">
+                            </td>
+                            <td class="subject-code">
+                                <span class="badge bg-primary">${subject.code}</span>
+                            </td>
+                            <td class="subject-name">${subject.name}</td>
+                            <td class="text-center">${subject.units}</td>
                             <td>
                                 <select class="form-select form-select-sm add-grade-select" 
-                                    data-subject-id="${subject.id}" disabled>
+                                    data-subject-id="${subject.id}" disabled
+                                    style="min-width: 100px;">
                                     <option value="">-- Select --</option>
                                     ${this.generateGradeOptions()}
                                 </select>
@@ -1441,31 +1494,28 @@ class CourseManager {
                         </tr>`;
                     });
                     
-                    html += '</tbody></table></div>';
+                    html += `          </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                    semesterIndex++;
                 }
                 
-                html += '</div></div>';
+                html += `    </div>
+                    </div>
+                </div>`;
+                
+                yearIndex++;
             }
             
-            // Add search functionality
+            html += '</div>'; // Close accordion
+            
+            // Add event listeners after HTML is rendered
             setTimeout(() => {
-                $('#courseSearch').on('keyup', function() {
-                    const searchTerm = $(this).val().toLowerCase();
-                    $('.add-checkbox').each(function() {
-                        const row = $(this).closest('tr');
-                        const code = row.find('td:nth-child(2)').text().toLowerCase();
-                        const name = row.find('td:nth-child(3)').text().toLowerCase();
-                        
-                        if (code.includes(searchTerm) || name.includes(searchTerm)) {
-                            row.show();
-                        } else {
-                            row.hide();
-                        }
-                    });
-                });
-                
-                // Add checkbox event listeners
-                $('.add-checkbox').on('change', (e) => this.handleAddSelection(e));
+                this.setupAddCoursesEvents();
             }, 100);
         }
         
@@ -1528,6 +1578,150 @@ class CourseManager {
             });
             this.updateSelectionSummary();
         }
+    }
+
+    setupAddCoursesEvents() {
+        const self = this;
+        
+        // Search functionality
+        $('#courseSearch').on('keyup', function() {
+            const searchTerm = $(this).val().toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                // Show all rows and expand all sections
+                $('.subject-row').show();
+                $('.collapse').collapse('show');
+                return;
+            }
+            
+            // Hide all rows first
+            $('.subject-row').hide();
+            
+            // Filter rows that match search
+            $('.subject-row').each(function() {
+                const code = $(this).data('code');
+                const name = $(this).data('name');
+                
+                if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                    $(this).show();
+                    
+                    // Show parent semester and year
+                    const semesterCard = $(this).closest('.card');
+                    const semesterCollapse = semesterCard.find('.collapse');
+                    const yearCollapse = semesterCard.closest('.accordion-item').find('.accordion-collapse');
+                    
+                    semesterCollapse.collapse('show');
+                    yearCollapse.collapse('show');
+                }
+            });
+            
+            // Hide empty semesters
+            $('.semester-table').each(function() {
+                const visibleRows = $(this).find('.subject-row:visible').length;
+                const semesterCard = $(this).closest('.card');
+                
+                if (visibleRows === 0) {
+                    semesterCard.hide();
+                } else {
+                    semesterCard.show();
+                }
+            });
+            
+            // Hide empty years
+            $('.accordion-item').each(function() {
+                const visibleCards = $(this).find('.card:visible').length;
+                
+                if (visibleCards === 0) {
+                    $(this).hide();
+                } else {
+                    $(this).show();
+                }
+            });
+        });
+        
+        // Expand All Years button
+        $('#expandAllYears').on('click', function() {
+            $('#yearLevelAccordion .accordion-collapse').collapse('show');
+            $('.card .collapse').collapse('show');
+        });
+        
+        // Collapse All Years button
+        $('#collapseAllYears').on('click', function() {
+            $('#yearLevelAccordion .accordion-collapse').collapse('hide');
+            $('.card .collapse').collapse('hide');
+        });
+        
+        // Checkbox event listeners
+        $('.add-checkbox').on('change', function(e) {
+            const checkbox = $(this);
+            const subjectId = checkbox.data('subject-id');
+            const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
+            
+            // Enable/disable grade select based on checkbox
+            gradeSelect.prop('disabled', !checkbox.is(':checked'));
+            
+            if (!checkbox.is(':checked')) {
+                // Clear grade and remove from selection if unchecked
+                gradeSelect.val('');
+                self.selectedSubjects.delete(subjectId);
+            } else if (gradeSelect.val()) {
+                // If checkbox is checked AND grade is already selected, add to selection
+                self.selectedSubjects.set(subjectId, {
+                    action: 'add',
+                    subject_id: subjectId,
+                    code: checkbox.data('code'),
+                    name: checkbox.data('name'),
+                    units: checkbox.data('units'),
+                    grade: gradeSelect.val()
+                });
+            }
+            
+            // Update grade change event
+            gradeSelect.off('change').on('change', function() {
+                const grade = $(this).val();
+                if (grade) {
+                    self.selectedSubjects.set(subjectId, {
+                        action: 'add',
+                        subject_id: subjectId,
+                        code: checkbox.data('code'),
+                        name: checkbox.data('name'),
+                        units: checkbox.data('units'),
+                        grade: grade
+                    });
+                } else {
+                    self.selectedSubjects.delete(subjectId);
+                }
+                self.updateSelectionSummary();
+            });
+            
+            self.updateSelectionSummary();
+        });
+        
+        // Grade select event listeners
+        $('.add-grade-select').on('change', function() {
+            const gradeSelect = $(this);
+            const subjectId = gradeSelect.data('subject-id');
+            const checkbox = $(`.add-checkbox[data-subject-id="${subjectId}"]`);
+            
+            if (gradeSelect.val()) {
+                // Automatically check the checkbox when grade is selected
+                checkbox.prop('checked', true);
+                
+                self.selectedSubjects.set(subjectId, {
+                    action: 'add',
+                    subject_id: subjectId,
+                    code: checkbox.data('code'),
+                    name: checkbox.data('name'),
+                    units: checkbox.data('units'),
+                    grade: gradeSelect.val()
+                });
+            } else if (checkbox.is(':checked')) {
+                // If grade is cleared but checkbox is checked, remove from selection
+                self.selectedSubjects.delete(subjectId);
+            }
+            
+            self.updateSelectionSummary();
+        });
     }
 
     handleDropSelection(e) {
