@@ -1389,12 +1389,14 @@ class CourseManager {
         });
     }
 
+    
     renderAvailableCourses(availableSubjects) {
         let html = '';
         
         if (!availableSubjects || Object.keys(availableSubjects).length === 0) {
             html = '<div class="alert alert-info">No available courses to add at this time.</div>';
         } else {
+            // Similar structure to enrollment modal
             html = '<div class="mb-3"><input type="text" class="form-control" id="courseSearch" placeholder="Search courses..."></div>';
             
             for (const [yearLevel, semesters] of Object.entries(availableSubjects)) {
@@ -1431,7 +1433,7 @@ class CourseManager {
                             <td>${subject.units}</td>
                             <td>
                                 <select class="form-select form-select-sm add-grade-select" 
-                                    data-subject-id="${subject.id}">
+                                    data-subject-id="${subject.id}" disabled>
                                     <option value="">-- Select --</option>
                                     ${this.generateGradeOptions()}
                                 </select>
@@ -1463,7 +1465,7 @@ class CourseManager {
                 });
                 
                 // Add checkbox event listeners
-                $(document).off('change', '.add-checkbox').on('change', '.add-checkbox', (e) => this.handleAddSelection(e));
+                $('.add-checkbox').on('change', (e) => this.handleAddSelection(e));
             }, 100);
         }
         
@@ -1476,33 +1478,56 @@ class CourseManager {
         const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
         
         if (checkbox.is(':checked')) {
-            const grade = gradeSelect.val();
-            if (!grade) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Grade Required',
-                    text: 'Please select a grade before adding this course.',
-                });
-                checkbox.prop('checked', false);
-                return;
-            }
+            // Enable the grade select when checkbox is checked
+            gradeSelect.prop('disabled', false);
             
+            // Focus on the grade select to prompt user to select a grade
+            gradeSelect.focus();
+        } else {
+            // Unchecked - remove from selection, disable grade select and reset value
+            this.selectedSubjects.delete(subjectId);
+            gradeSelect.prop('disabled', true).val('');
+            
+            // Also update the UI if this was previously selected
+            const removeBtn = $(`.remove-selection[data-subject-id="${subjectId}"]`);
+            if (removeBtn.length) {
+                removeBtn.closest('li').remove();
+                this.updateSelectionSummary();
+            }
+        }
+        
+        // Listen for grade selection change
+        gradeSelect.off('change').on('change', () => {
+            const grade = gradeSelect.val();
+            if (grade) {
+                // Add to selected subjects when grade is selected
+                this.selectedSubjects.set(subjectId, {
+                    action: 'add',
+                    subject_id: subjectId,
+                    code: checkbox.data('code'),
+                    name: checkbox.data('name'),
+                    units: checkbox.data('units'),
+                    grade: grade
+                });
+            } else {
+                // Remove if grade is cleared
+                this.selectedSubjects.delete(subjectId);
+            }
+            this.updateSelectionSummary();
+        });
+        
+        // If there's already a grade selected, add it immediately
+        if (checkbox.is(':checked') && gradeSelect.val()) {
             this.selectedSubjects.set(subjectId, {
                 action: 'add',
                 subject_id: subjectId,
                 code: checkbox.data('code'),
                 name: checkbox.data('name'),
                 units: checkbox.data('units'),
-                grade: grade
+                grade: gradeSelect.val()
             });
-            
-            gradeSelect.prop('disabled', true);
-        } else {
-            this.selectedSubjects.delete(subjectId);
-            gradeSelect.prop('disabled', false).val('');
+            this.updateSelectionSummary();
         }
-        
-        this.updateSelectionSummary();
     }
 
     handleDropSelection(e) {
