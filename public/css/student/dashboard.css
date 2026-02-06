@@ -1415,6 +1415,118 @@ h1, h2, h3, h4, h5, h6 {
     transition: width 0.3s ease;
 }
 
+/* Add/Drop Modal Styles */
+#addDropModal .accordion-button {
+    background-color: var(--light);
+    border: none;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+#addDropModal .accordion-button:not(.collapsed) {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+#addDropModal .accordion-button:focus {
+    box-shadow: none;
+    border-color: var(--primary);
+}
+
+#addDropModal .accordion-button::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23666'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+#addDropModal .accordion-button:not(.collapsed)::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23007bff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+#addDropModal .card-header .btn-link {
+    color: var(--dark);
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 0;
+}
+
+#addDropModal .card-header .btn-link:hover {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+#addDropModal .card-header .btn-link[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+#addDropModal .card-header .btn-link[aria-expanded="false"] .fa-chevron-down {
+    transform: rotate(0deg);
+    transition: transform 0.3s ease;
+}
+
+#addDropModal .semester-table {
+    font-size: 0.875rem;
+}
+
+#addDropModal .semester-table thead th {
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+#addDropModal .semester-table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+#addDropModal .subject-code .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 500;
+}
+
+/* Animation for expand/collapse */
+.accordion-collapse {
+    transition: max-height 0.3s ease;
+}
+
+.collapse:not(.show) {
+    display: none;
+}
+
+/* Control buttons */
+#expandAllYears, #collapseAllYears {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Search box */
+#courseSearch {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 0.5rem 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#courseSearch:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Year level badges */
+.accordion-button .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Semester badges */
+.card-header .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 500;
+}
+
 
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
@@ -1571,6 +1683,19 @@ h1, h2, h3, h4, h5, h6 {
     
     .course-card {
         margin-bottom: 1rem;
+    }
+
+    #addDropModal .accordion-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    #addDropModal .semester-table {
+        font-size: 0.8rem;
+    }
+    
+    #addDropModal .add-grade-select {
+        min-width: 90px !important;
     }
 }
 
