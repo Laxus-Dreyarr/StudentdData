@@ -940,8 +940,8 @@ class StudentController extends Controller
 
     public function getAvailableSubjectsForAddDrop(Request $request)
     {
-        $user = $request->user();
-        $student = Student::where('student_id', $user->id)->first();
+        $user = Auth::guard('student')->user();
+        $student = $user->user_information->student;
         
         if (!$student) {
             return response()->json(['error' => 'Student not found'], 404);
@@ -973,6 +973,42 @@ class StudentController extends Controller
 
         return response()->json([
             'availableSubjects' => $availableSubjects
+        ]);
+    }
+
+    // Add this method to your StudentController
+    public function getEnrolledSubjects(Request $request)
+    {
+        $user = $request->user();
+        $student = Student::where('student_id', $user->id)->first();
+        
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        
+        $action = $request->query('action');
+        
+        if ($action === 'available') {
+            // Get available subjects (not yet enrolled)
+            return $this->getAvailableSubjectsForAddDrop($request);
+        }
+        
+        // Otherwise, return enrolled subjects
+        $enrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+            ->with('subject')
+            ->get()
+            ->map(function ($enrolled) {
+                return [
+                    'subject_id' => $enrolled->subject_id,
+                    'subject_code' => $enrolled->subject->code,
+                    'subject_name' => $enrolled->subject->name,
+                    'units' => $enrolled->subject->units,
+                    'grade' => $enrolled->grade
+                ];
+            });
+        
+        return response()->json([
+            'enrolledSubjects' => $enrolledSubjects
         ]);
     }
 
