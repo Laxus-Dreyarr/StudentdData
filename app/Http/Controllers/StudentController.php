@@ -746,6 +746,26 @@ class StudentController extends Controller
             ];
         })->sortByDesc('numeric_grade')->take(4);
 
+        $gradesTableData = $enrolledSubjects->map(function($enrolled) {
+            $subject = $enrolled->subject;
+            $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
+            
+            // Get equivalent letter grade or status
+            $equivalent = $this->getGradeEquivalent($enrolled->grade);
+            
+            return [
+                'subject_code' => $subject->code ?? 'N/A',
+                'subject_name' => $subject->name ?? 'Unknown Subject',
+                'grade' => $enrolled->grade,
+                'numeric_grade' => $numericGrade,
+                'equivalent' => $equivalent,
+                'units' => $subject->units ?? 3,
+                'color_class' => $this->getGradeColorClass($numericGrade),
+            ];
+        })->sortBy('subject_code');
+
+        $academicStanding = $this->getAcademicStanding($gwa);
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -767,7 +787,9 @@ class StudentController extends Controller
             'enrolledSubjects',
             'recentSubjects',
             'gradeDistribution',
-            'academicProgress'
+            'academicProgress',
+            'gradesTableData',
+            'academicStanding'
         ));
 
     }
@@ -918,6 +940,61 @@ class StudentController extends Controller
         ];
         
         return $gradeMap[$grade] ?? 0;
+    }
+
+    // helper method to get grade equivalent
+    private function getGradeEquivalent($grade)
+    {
+        $gradeMap = [
+            // Passing grades
+            '1.0' => '1.0', '1.1' => '1.1', '1.2' => '1.2', '1.3' => '1.3', '1.4' => '1.4',
+            '1.5' => '1.5', '1.6' => '1.6', '1.7' => '1.7', '1.8' => '1.8', '1.9' => '1.9',
+            '2.0' => '2.0', '2.1' => '2.1', '2.2' => '2.2', '2.3' => '2.3', '2.4' => '2.4',
+            '2.5' => '2.5', '2.6' => '2.6', '2.7' => '2.7', '2.8' => '2.8', '2.9' => '2.9',
+            '3.0' => '3.0',
+            
+            // Failing and special grades
+            '4.0' => '4.0',
+            '5.0' => '5.0',
+            'INC' => 'INC',
+            'DRP' => 'DRP',
+            'PASS' => 'PASS',
+            'FAIL' => 'FAIL',
+        ];
+        
+        return $gradeMap[$grade] ?? $grade;
+    }
+
+    // helper method to get grade color class for badges
+    private function getGradeColorClass($numericGrade)
+    {
+    if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+        return 'grade-excellent'; // Green
+    } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
+        return 'grade-good'; // Blue
+    } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+        return 'grade-passing'; // Yellow
+    } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+        return 'grade-failing'; // Red
+    } else {
+        return 'grade-special'; // Gray
+    }
+}
+
+    // Determine academic standing
+    private function getAcademicStanding($gwa)
+    {
+        if ($gwa >= 1.0 && $gwa <= 1.45) {
+            return 'President\'s Lister';
+        } elseif ($gwa >= 1.46 && $gwa <= 1.75) {
+            return 'Dean\'s Lister';
+        } elseif ($gwa >= 1.76 && $gwa <= 2.00) {
+            return 'Academic Achiever';
+        } elseif ($gwa >= 2.01 && $gwa <= 2.75) {
+            return 'Satisfactory';
+        } else {
+            return 'On Probation';
+        }
     }
 
     /**
