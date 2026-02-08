@@ -937,6 +937,7 @@ class StudentController extends Controller
             return response()->json(['error' => 'Failed to update courses: ' . $e->getMessage()], 500);
         }
     }
+    
 
     public function getAvailableSubjectsForAddDrop(Request $request)
     {
