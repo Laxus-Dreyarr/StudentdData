@@ -797,6 +797,22 @@ class StudentController extends Controller
                 });
         }
 
+        // Get active warnings for the student
+        $warnings = StudentWarning::where('student_id', $student->id)
+            ->where('status', 'Active')
+            ->orderBy('issued_date', 'desc')
+            ->get();
+        
+        // Check if student is on probation
+        $probation = StudentProbation::where('student_id', $student->id)
+            ->where('status', 'Active')
+            ->first();
+        
+        // Get incomplete grades
+        $incompleteGrades = IncompleteGrade::where('student_id', $student->id)
+            ->where('status', 'Pending')
+            ->get();
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -821,7 +837,10 @@ class StudentController extends Controller
             'gradeDistribution',
             'academicProgress',
             'gradesTableData',
-            'academicStanding'
+            'academicStanding',
+            'warnings',
+            'probation',
+            'incompleteGrades'
         ));
 
     }

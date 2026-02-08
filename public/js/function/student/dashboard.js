@@ -939,8 +939,10 @@ function showToast(message, type = 'success') {
                     
                     // Failing and Special Grades
                     '4.0': 4.0, '5.0': 5.0,
-                    'INC': 0.0, 'DRP': 0.0,
-                    'PASS': 1.0, 'FAIL': 5.0
+                    'INC': 0.0, 'DRP': 0.0
+                    // '4.0': 4.0, '5.0': 5.0,
+                    // 'INC': 0.0, 'DRP': 0.0,
+                    // 'PASS': 1.0, 'FAIL': 5.0
                 };
                 return gradeMap[grade] || 0;
             }
@@ -2025,8 +2027,220 @@ class CourseManager {
                     if (!this.getAttribute('href')) {
                         e.preventDefault();
                         const buttonText = this.textContent.trim();
-                        alert(`Action: ${buttonText}`);
+                        // alert(`Action: ${buttonText}`);
                     }
                 });
             });
+ 
+            // Function to acknowledge a warning
+            function acknowledgeWarning(warningId) {
+                if (confirm('Are you sure you want to acknowledge this warning?')) {
+                    fetch(`/student/warnings/${warningId}/acknowledge`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove or update the warning display
+                            const warningElement = document.querySelector(`[data-warning-id="${warningId}"]`);
+                            if (warningElement) {
+                                warningElement.remove();
+                                showToast('Warning acknowledged successfully', 'success');
+                            }
+                            
+                            // If no warnings left, refresh the section
+                            if (document.querySelectorAll('.academic-status-item.status-warning').length === 0) {
+                                loadAcademicStatus();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('Failed to acknowledge warning', 'error');
+                    });
+                }
+            }
+
+            // Function to check for new warnings
+            function checkForNewWarnings() {
+                fetch('/student/check-new-warnings')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.hasNewWarnings) {
+                            showNotification('You have new academic warnings', 'warning');
+                            // Refresh the warnings section
+                            loadAcademicStatus();
+                        }
+                    })
+                    .catch(error => console.error('Error checking warnings:', error));
+            }
+
+            // Function to load academic status dynamically
+            function loadAcademicStatus() {
+                fetch('/student/academic-status')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update the academic status section with new data
+                        const statusContainer = document.querySelector('.academic-status-list');
+                        if (statusContainer && data.html) {
+                            statusContainer.innerHTML = data.html;
+                        }
+                    })
+                    .catch(error => console.error('Error loading academic status:', error));
+            }
+
+            // Add event listeners for acknowledgment buttons (using event delegation)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('acknowledge-warning-btn')) {
+                    const warningId = e.target.dataset.warningId;
+                    acknowledgeWarning(warningId);
+                }
+                
+                // If you have a button to acknowledge all warnings
+                if (e.target.id === 'acknowledge-all-warnings') {
+                    e.preventDefault();
+                    if (confirm('Acknowledge all warnings?')) {
+                        fetch('/student/warnings/acknowledge-all', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('All warnings acknowledged', 'success');
+                                loadAcademicStatus();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Failed to acknowledge warnings', 'error');
+                        });
+                    }
+                }
+            });
+
+            // Check for new warnings periodically (every 5 minutes)
+            // Only start the interval after the page is loaded
+            let warningCheckInterval;
+            
+            // Start checking for warnings after 30 seconds, then every 5 minutes
+            setTimeout(() => {
+                checkForNewWarnings();
+                warningCheckInterval = setInterval(checkForNewWarnings, 300000); // 5 minutes
+            }, 30000); // 30 seconds
+
+            // Clean up interval when page is unloaded
+            window.addEventListener('beforeunload', function() {
+                if (warningCheckInterval) {
+                    clearInterval(warningCheckInterval);
+                }
+            });
+
+            // If you want to add a manual refresh button for academic status
+            const refreshAcademicStatusBtn = document.getElementById('refresh-academic-status');
+            if (refreshAcademicStatusBtn) {
+                refreshAcademicStatusBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loadAcademicStatus();
+                    showToast('Academic status refreshed', 'info');
+                });
+            }
+            
+            // Initialize any tooltips or popovers for academic status items
+            initializeAcademicStatusUI();
+
+            // 
         });
+
+
+        // Helper function for toast notifications (if not already defined)
+function showToast(message, type = 'info') {
+    // You can use a toast library or create your own
+    // Example with Bootstrap toast if available
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    
+    toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+    toastContainer.appendChild(toastEl);
+    
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toastEl.remove();
+    }, 5000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Initialize academic status UI elements
+function initializeAcademicStatusUI() {
+    // Add hover effects or tooltips
+    const statusItems = document.querySelectorAll('.academic-status-item');
+    statusItems.forEach(item => {
+        // Add tooltips for status badges
+        const badges = item.querySelectorAll('.status-badge');
+        badges.forEach(badge => {
+            badge.title = badge.textContent.trim();
+        });
+        
+        // Add click to expand details if needed
+        item.addEventListener('click', function(e) {
+            if (!e.target.closest('.acknowledge-warning-btn')) {
+                const content = this.querySelector('.status-content');
+                if (content) {
+                    content.classList.toggle('expanded');
+                }
+            }
+        });
+    });
+}
+
+// Function to show notification (for new warnings)
+function showNotification(message, type = 'info') {
+    // Check if browser supports notifications
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Academic Alert", {
+            body: message,
+            icon: '/favicon.ico'
+        });
+    } else if ("Notification" in window && Notification.permission !== "denied") {
+        // Request permission
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                new Notification("Academic Alert", {
+                    body: message,
+                    icon: '/favicon.ico'
+                });
+            }
+        });
+    }
+    
+    // Also show a toast as fallback
+    showToast(message, type);
+}

@@ -46,8 +46,6 @@ Route::middleware(['student.auth'])->group(function () {
     Route::post('/student/enroll-subjects', [StudentController::class, 'enrollSubjects'])->name('student.enrollSubjects');
 
     // Scholastic warning routes
-    Route::get('/student/academic-status', [StudentController::class, 'getAcademicStatus']);
-    Route::post('/student/warnings/{warning}/acknowledge', [StudentController::class, 'acknowledgeWarning']);
     Route::post('/student/check-delinquency', [StudentController::class, 'checkDelinquency']);
     
     // Incomplete grade completion
@@ -61,7 +59,6 @@ Route::middleware(['student.auth'])->group(function () {
     // Warning routes
     Route::post('/student/warnings/acknowledge-all', [StudentController::class, 'acknowledgeAllWarnings']);
     Route::get('/student/warnings/{warning}/details', [StudentController::class, 'getWarningDetails']);
-    Route::get('/student/check-new-warnings', [StudentController::class, 'checkNewWarnings']);
     
     // Probation routes
     Route::get('/student/probation/terms', [StudentController::class, 'getProbationTerms']);
@@ -72,6 +69,10 @@ Route::middleware(['student.auth'])->group(function () {
     Route::get('/student/enrolled-subjects', [StudentController::class, 'getEnrolledSubjects']);
     Route::get('/student/available-subjects', [StudentController::class,'getAvailableSubjectsForAddDrop']);
     Route::post('/student/update-subjects', [StudentController::class, 'updateSubjects'])->name('student.updateSubjects');
+
+    Route::post('/student/warnings/{warning}/acknowledge', [StudentController::class, 'acknowledgeWarning']);
+    Route::get('/student/check-new-warnings', [StudentController::class, 'checkNewWarnings']);
+    Route::get('/student/academic-status', [StudentController::class, 'getAcademicStatus']);
     // Add other protected routes here
 });
 
