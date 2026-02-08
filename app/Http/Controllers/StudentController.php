@@ -565,6 +565,7 @@ class StudentController extends Controller
             'message' => 'No user logged in'
         ], 401);
     }
+    
 
     public function dashboard(Request $request)
     {

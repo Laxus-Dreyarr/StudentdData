@@ -2018,7 +2018,6 @@ class CourseManager {
                 }
             });
             
-            
             // Add click handlers for buttons in other sections
             document.querySelectorAll('.btn-primary, .btn-outline').forEach(button => {
                 button.addEventListener('click', function(e) {

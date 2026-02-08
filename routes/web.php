@@ -75,7 +75,6 @@ Route::middleware(['student.auth'])->group(function () {
     // Add other protected routes here
 });
 
-
 // GET route for convenience
 // Route::get('/logout', function() {
 //     return view('logout-redirect'); // Create this view
