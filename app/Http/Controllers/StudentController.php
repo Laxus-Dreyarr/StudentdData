@@ -878,12 +878,14 @@ class StudentController extends Controller
     //         return response()->json(['error' => 'Failed to update grade'], 500);
     //     }
     // }
+
     public function updateSubjectGrade(Request $request)
     {
-        $user = Auth::guard('student')->user();
+        $user = $request->user();
+        $student = Student::where('student_id', $user->id)->first();
         
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
         }
         
         $validated = $request->validate([
@@ -892,47 +894,33 @@ class StudentController extends Controller
         ]);
         
         try {
-            DB::beginTransaction();
-            
-            // Get student info through user_info
-            $userInfo = $user->user_information;
-            
-            if (!$userInfo) {
-                return response()->json(['error' => 'Student information not found'], 404);
-            }
-            
-            $student = $userInfo->student;
-            
-            if (!$student) {
-                return response()->json(['error' => 'Student record not found'], 404);
-            }
-            
             // Update the grade
             $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
                 ->where('subject_id', $validated['subject_id'])
                 ->first();
             
             if ($enrolledSubject) {
-                $oldGrade = $enrolledSubject->grade;
                 $enrolledSubject->grade = $validated['grade'];
                 $enrolledSubject->save();
+
+                // Check if grade is passing (not 4.0, 5.0, or DRP)
+                // Also consider INC, FAIL as failing grades if needed
+                $failingGrades = ['4.0', '5.0', 'DRP', 'INC', 'FAIL']; // Adjust based on your requirements
                 
-                // Handle INC (Incomplete) grades
-                if ($validated['grade'] === 'INC') {
-                    $this->handleIncompleteGrade($student->id, $validated['subject_id']);
+                if (!in_array($validated['grade'], $failingGrades)) {
+                    // Delete from failed_subjects if grade is now passing
+                    FailedSubject::where('student_id', $student->id)
+                        ->where('subject_id', $validated['subject_id'])
+                        ->delete();
+                } else {
+                    // If grade is failing, ensure it's in failed_subjects
+                    // You might want to add logic here to insert if not exists
+                    FailedSubject::firstOrCreate([
+                        'student_id' => $student->id,
+                        'subject_id' => $validated['subject_id'],
+                        // Add any other required fields
+                    ]);
                 }
-                
-                // Handle failed grades (4.0, 5.0, DRP)
-                if (in_array($validated['grade'], ['4.0', '5.0', 'DRP', '4', '5'])) {
-                    $this->handleFailedGrade($student->id, $validated['subject_id']);
-                }
-                
-                // If previously had INC and now has a different grade, mark as completed
-                if ($oldGrade === 'INC' && $validated['grade'] !== 'INC') {
-                    $this->completeIncompleteGradeRecord($student->id, $validated['subject_id'], $validated['grade']);
-                }
-                
-                DB::commit();
                 
                 return response()->json([
                     'success' => true,
@@ -942,26 +930,7 @@ class StudentController extends Controller
                 return response()->json(['error' => 'Subject not enrolled'], 404);
             }
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Update grade error: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
-        }
-    }
-
-    private function completeIncompleteGradeRecord($student_id, $subject_id, $final_grade)
-    {
-        $incomplete = IncompleteGrade::where('student_id', $student_id)
-            ->where('subject_id', $subject_id)
-            ->where('status', 'Pending')
-            ->first();
-            
-        if ($incomplete) {
-            $incomplete->update([
-                'completion_date' => now(),
-                'final_grade' => $final_grade,
-                'status' => 'Completed',
-                'updated_at' => now()
-            ]);
         }
     }
 
@@ -999,9 +968,19 @@ class StudentController extends Controller
                 return response()->json(['error' => 'Student record not found'], 404);
             }
             
-            // Handle dropped subjects
+            // Handle dropped subjects - also remove from related tables
             if ($request->has('dropped_subjects') && count($request->dropped_subjects) > 0) {
                 EnrolledSubjects::where('student_id', $student->id)
+                    ->whereIn('subject_id', $request->dropped_subjects)
+                    ->delete();
+                
+                // Also remove from failed_subjects
+                FailedSubject::where('student_id', $student->id)
+                    ->whereIn('subject_id', $request->dropped_subjects)
+                    ->delete();
+                    
+                // Also remove from incomplete_grades
+                IncompleteGrade::where('student_id', $student->id)
                     ->whereIn('subject_id', $request->dropped_subjects)
                     ->delete();
             }
@@ -1031,25 +1010,59 @@ class StudentController extends Controller
                     $subject_id = $gradeData['subject_id'];
                     $grade = strtoupper(trim($gradeData['grade']));
                     
+                    // Normalize grade format for comparison
+                    $normalizedGrade = $grade;
+                    if ($grade === '4') $normalizedGrade = '4.0';
+                    if ($grade === '5') $normalizedGrade = '5.0';
+                    
                     // Update grade in enrolled_subjects
                     $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
                         ->where('subject_id', $subject_id)
                         ->first();
                         
                     if ($enrolledSubject) {
+                        $oldGrade = $enrolledSubject->grade;
                         $enrolledSubject->grade = $grade;
                         $enrolledSubject->save();
                         
-                        // Handle INC (Incomplete) grades
-                        if ($grade === 'INC') {
-                            $this->handleIncompleteGrade($student->id, $subject_id);
+                        // Define failing grades
+                        $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
+                        $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
+                        $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
+                        
+                        // If grade is passing (not failing), clean up related records
+                        if (!$isFailingGrade) {
+                            // Remove from failed_subjects if exists
+                            FailedSubject::where('student_id', $student->id)
+                                ->where('subject_id', $subject_id)
+                                ->delete();
+                                
+                            // Remove from incomplete_grades if exists
+                            IncompleteGrade::where('student_id', $student->id)
+                                ->where('subject_id', $subject_id)
+                                ->delete();
+                                
+                            // If this subject was previously failing, we need to update warnings
+                            if ($wasFailingGrade) {
+                                $needWarningUpdate = true;
+                            }
                         }
                         
-                        // Handle failed grades (4.0, 5.0, DRP)
-                        if (in_array($grade, ['4.0', '5.0', 'DRP', '4', '5'])) {
+                        // Handle specific grade types
+                        if ($grade === 'INC') {
+                            $this->handleIncompleteGrade($student->id, $subject_id);
+                            $needWarningUpdate = true;
+                        } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
                             $this->handleFailedGrade($student->id, $subject_id);
+                            $needWarningUpdate = true;
                         }
                     }
+                }
+                
+                // After processing all grade updates, update warnings if needed
+                if (isset($needWarningUpdate) && $needWarningUpdate) {
+                    $this->updateStudentWarnings($student->id);
+                    $this->cleanupWarningsAndProbation($student->id);
                 }
             }
             
@@ -1075,6 +1088,47 @@ class StudentController extends Controller
             DB::rollBack();
             Log::error('Update subjects error: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to update subjects: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // private function cleanupWarningsAndProbation($student_id)
+    // {
+    //     // This method should only remove probation when student has only 2 failed subjects
+    //     // and downgrade warnings if needed, but updateStudentWarnings already handles that
+    //     // So we can simplify or remove this method
+
+        
+    //     // Get current failed subjects count
+    //     $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
+    //     $distinctFailedSubjects = $failedSubjects->count();
+        
+    //     // Remove probation only if student has 2 or fewer distinct failed subjects
+    //     // AND doesn't have a Final Warning
+    //     if ($distinctFailedSubjects <= 2) {
+    //         $hasFinalWarning = StudentWarning::where('student_id', $student_id)
+    //             ->where('warning_type', 'Final Warning')
+    //             ->where('status', 'Active')
+    //             ->exists();
+                
+    //         if (!$hasFinalWarning) {
+    //             StudentProbation::where('student_id', $student_id)
+    //                 ->where('status', 'Active')
+    //                 ->delete();
+    //         }
+    //     }
+    // }
+
+    private function cleanupWarningsAndProbation($student_id)
+    {
+        // Get current failed subjects count
+        $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
+        $distinctFailedSubjects = $failedSubjects->count();
+        
+        // Remove probation if student has only 2 or fewer distinct failed subjects
+        if ($distinctFailedSubjects <= 2) {
+            StudentProbation::where('student_id', $student_id)
+                ->where('status', 'Active')
+                ->delete();
         }
     }
 
@@ -1111,10 +1165,6 @@ class StudentController extends Controller
     private function handleFailedGrade($student_id, $subject_id)
     {
         // Check if failed subject already exists
-        // $failedSubject = FailedSubject::where('student_id', $student_id)
-        //     ->where('subject_id', $subject_id)
-        //     ->first();
-        
         $failedSubject = FailedSubject::where([
             ['student_id', $student_id],
             ['subject_id', $subject_id]
@@ -1133,9 +1183,6 @@ class StudentController extends Controller
                 'how_many' => '1'
             ]);
         }
-        
-        // Check and update student warnings based on failure count
-        $this->updateStudentWarnings($student_id);
     }
 
     private function updateStudentWarnings($student_id)
@@ -1143,69 +1190,99 @@ class StudentController extends Controller
         // Get all failed subjects for this student
         $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
         
-        // Calculate total failed attempts
+        // Count distinct failed subjects
+        $distinctFailedSubjects = $failedSubjects->count();
+        
+        // Calculate total failed attempts (sum of how_many)
         $totalFailures = $failedSubjects->sum(function($item) {
             return intval($item->how_many);
         });
         
-        // Count distinct failed subjects
-        $distinctFailedSubjects = $failedSubjects->count();
+        // Determine new warning type based ONLY on distinct failed subjects
+        $newWarningType = null;
         
-        // Determine warning type based on failure patterns
-        $warningType = null;
-        
-        // Rule 1: If any subject failed 3 times or more
-        $hasTripleFailure = $failedSubjects->contains(function($item) {
-            return intval($item->how_many) >= 3;
-        });
-        
-        // Rule 2: If 3 or more distinct subjects failed
-        $hasThreeDistinctFailures = $distinctFailedSubjects >= 3;
-        
-        // Rule 3: Based on total failures
-        if ($hasTripleFailure || $hasThreeDistinctFailures) {
-            $warningType = 'Final Warning';
-        } elseif ($totalFailures >= 2 || $distinctFailedSubjects >= 2) {
-            $warningType = 'Second Warning';
-        } elseif ($totalFailures >= 1 || $distinctFailedSubjects >= 1) {
-            $warningType = 'First Warning';
+        // Rule 1: If 3 or more distinct subjects failed - Final Warning
+        if ($distinctFailedSubjects >= 3) {
+            $newWarningType = 'Final Warning';
+        } 
+        // Rule 2: If 2 distinct subjects failed - Second Warning
+        elseif ($distinctFailedSubjects == 2) {
+            $newWarningType = 'Second Warning';
+        }
+        // Rule 3: If 1 distinct subject failed - First Warning
+        elseif ($distinctFailedSubjects == 1) {
+            // Check if this single subject failed 3 or more times
+            $hasTripleFailure = $failedSubjects->contains(function($item) {
+                return intval($item->how_many) >= 3;
+            });
+            
+            if ($hasTripleFailure) {
+                $newWarningType = 'Final Warning';
+            } else {
+                $newWarningType = 'First Warning';
+            }
         }
         
-        if ($warningType) {
-            // Check if there's already an active warning of this type
-            $existingWarning = StudentWarning::where('student_id', $student_id)
-                ->where('warning_type', $warningType)
-                ->where('status', 'Active')
-                ->first();
+        // Get existing active warning
+        $existingWarning = StudentWarning::where('student_id', $student_id)
+            ->where('status', 'Active')
+            ->first();
+        
+        if ($newWarningType) {
+            // Get subject IDs for the reason
+            $subjectIds = $failedSubjects->pluck('subject_id')->toArray();
+            $subjectNames = Subject::whereIn('id', $subjectIds)
+                ->pluck('name')
+                ->implode(', ');
                 
-            if (!$existingWarning) {
-                // Get subject IDs for the reason
-                $subjectIds = $failedSubjects->pluck('subject_id')->toArray();
-                $subjectNames = Subject::whereIn('id', $subjectIds)
-                    ->pluck('name')
-                    ->implode(', ');
-                    
+            $reason = 'Failed in subject(s): ' . $subjectNames . 
+                    ' (Total failures: ' . $totalFailures . 
+                    ', Distinct subjects: ' . $distinctFailedSubjects . ')';
+            
+            if ($existingWarning) {
+                // Update existing warning
+                $existingWarning->update([
+                    'warning_type' => $newWarningType,
+                    'reason' => $reason,
+                    'related_subject_ids' => implode(',', $subjectIds),
+                    'updated_at' => now()
+                ]);
+            } else {
                 // Create new warning
                 StudentWarning::create([
                     'student_id' => $student_id,
-                    'warning_type' => $warningType,
-                    'reason' => 'Failed in subject(s): ' . $subjectNames . 
-                            ' (Total failures: ' . $totalFailures . 
-                            ', Distinct subjects: ' . $distinctFailedSubjects . ')',
+                    'warning_type' => $newWarningType,
+                    'reason' => $reason,
                     'issued_date' => now(),
-                    'expiry_date' => now()->addYear(), // Warning expires after 1 year
+                    'expiry_date' => now()->addYear(),
                     'status' => 'Active',
                     'related_subject_ids' => implode(',', $subjectIds),
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
-                
-                // If this is a Final Warning, also create probation record
-                if ($warningType === 'Final Warning') {
-                    $this->createProbationRecord($student_id);
-                }
             }
+            
+            // Handle probation for Final Warning
+            if ($newWarningType === 'Final Warning') {
+                $this->createProbationRecord($student_id);
+            } elseif ($existingWarning && $existingWarning->warning_type === 'Final Warning' && $newWarningType !== 'Final Warning') {
+                // If warning was downgraded from Final Warning, remove probation
+                StudentProbation::where('student_id', $student_id)
+                    ->where('status', 'Active')
+                    ->delete();
+            }
+        } else {
+            // No failed subjects - delete any existing warnings and probation
+            if ($existingWarning) {
+                $existingWarning->delete();
+            }
+            StudentProbation::where('student_id', $student_id)
+                ->where('status', 'Active')
+                ->delete();
         }
+        
+        // Always run cleanup to ensure probation is removed when appropriate
+        $this->cleanupWarningsAndProbation($student_id);
     }
 
     private function createProbationRecord($student_id)
