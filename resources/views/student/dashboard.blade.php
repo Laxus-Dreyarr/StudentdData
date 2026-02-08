@@ -1498,7 +1498,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update-tab-pane" type="button">
-                                    <i class="fas fa-edit"></i> Update Grades
+                                    <i class="fas fa-edit"></i> Update Grades (Immediate)
                                 </button>
                             </li>
                         </ul>
@@ -1572,10 +1572,21 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <!-- <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-primary" id="submitAddDrop" disabled>
                             <i class="fas fa-check"></i> Submit Changes
+                        </button>
+                    </div> -->
+                    <div class="modal-footer">
+                        <div class="me-auto">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Grade updates are immediate. Submit only for Add/Drop.
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="submitAddDrop" disabled>
+                            <i class="fas fa-check"></i> Submit Add/Drop
                         </button>
                     </div>
                 </div>
@@ -1609,7 +1620,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
-    <script>
+    <!-- <script>
         $(document).ready(function() {
             // Get data from the hidden div
             const dataElement = document.getElementById('student-data');
@@ -1777,6 +1788,199 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 }, 5000);
             }
         });
-</script>
+    </script> -->
+    <script>
+    $(document).ready(function() {
+        // Get data from the hidden div
+        const dataElement = document.getElementById('student-data');
+        const studentData = {
+            enrolledSubjects: JSON.parse(dataElement.dataset.enrolledSubjects || '[]'),
+            csrfToken: dataElement.dataset.csrfToken || '',
+            baseUrl: dataElement.dataset.baseUrl || ''
+        };
+        
+        // Initialize CourseManager
+        if (typeof CourseManager !== 'undefined') {
+            window.courseManager = new CourseManager(studentData);
+        }
+        
+        // Handle immediate grade updates in the modal
+        $(document).on('click', '.update-grade-btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = $(this);
+            const subjectId = button.data('subject-id');
+            const gradeSelect = $(`.update-grade-select[data-subject-id="${subjectId}"]`);
+            const grade = gradeSelect.val();
+            
+            if (!grade) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Grade Required',
+                    text: 'Please select a grade.',
+                });
+                return;
+            }
+            
+            // Show loading state
+            const originalText = button.html();
+            button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
+            
+            // Send AJAX request
+            $.ajax({
+                url: '/student/update-grade',
+                method: 'POST',
+                data: JSON.stringify({
+                    subject_id: subjectId,
+                    grade: grade
+                }),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    // Show success message
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: response.message || 'Grade updated successfully.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    
+                    // Update UI
+                    button.html('<i class="fas fa-check"></i> Updated');
+                    button.removeClass('btn-primary').addClass('btn-success');
+                    
+                    // Update the current grade display in the same row
+                    const row = button.closest('tr');
+                    row.find('td:eq(3)').text(grade); // Assuming current grade is in 4th column
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.html('<i class="fas fa-save"></i> Update');
+                        button.removeClass('btn-success').addClass('btn-primary');
+                        button.prop('disabled', false);
+                    }, 2000);
+                    
+                    // Also update the grade in the courses section if it exists
+                    $(`.btn-edit-grade[data-subject-id="${subjectId}"]`)
+                        .closest('.grade-actions')
+                        .find('.grade-value')
+                        .text(grade)
+                        .removeClass('grade-pass grade-fail')
+                        .addClass(grade >= 3.0 ? 'grade-fail' : 'grade-pass');
+                        
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Failed to update grade';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error
+                    });
+                    button.prop('disabled', false).html(originalText);
+                    console.error('Error details:', xhr);
+                }
+            });
+        });
+        
+        // Handle "Submit Changes" button (only for Add/Drop)
+        $(document).off('click', '#submitAddDrop').on('click', '#submitAddDrop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if ($(this).prop('disabled')) return;
+            
+            // Gather data ONLY from Add and Drop tabs
+            const addedSubjects = [];
+            const droppedSubjects = [];
+            
+            // Check "Add" tab for selected subjects with grades
+            $('#add-tab-pane .add-checkbox:checked').each(function() {
+                const subjectId = $(this).data('subject-id');
+                const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
+                const grade = gradeSelect.val();
+                
+                if (subjectId && grade) {
+                    addedSubjects.push({
+                        subject_id: parseInt(subjectId),
+                        grade: grade
+                    });
+                }
+            });
+            
+            // Check "Drop" tab for selected subjects
+            $('.drop-checkbox:checked').each(function() {
+                const subjectId = $(this).data('subject-id');
+                if (subjectId) {
+                    droppedSubjects.push(parseInt(subjectId));
+                }
+            });
+            
+            // If nothing to add or drop, show message
+            if (addedSubjects.length === 0 && droppedSubjects.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No Changes',
+                    text: 'No subjects selected for add or drop.',
+                });
+                return;
+            }
+            
+            // Prepare data for submission
+            const data = {
+                added_subjects: addedSubjects.map(item => item.subject_id),
+                dropped_subjects: droppedSubjects,
+                subject_grades: addedSubjects // Include grades for added subjects
+            };
+            
+            console.log('Sending data for add/drop:', data);
+            
+            // Show loading state
+            const submitBtn = $(this);
+            submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+            
+            // Send AJAX request
+            $.ajax({
+                url: '/student/update-subjects',
+                method: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    // Show success message
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Add/Drop operations completed successfully!',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        $('#addDropModal').modal('hide');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    });
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Failed to update subjects';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error
+                    });
+                    submitBtn.prop('disabled', false).html('<i class="fas fa-check"></i> Submit Changes');
+                    console.error('Error details:', xhr);
+                }
+            });
+            
+            return false;
+        });
+    });
+    </script>
 </body>
 </html>

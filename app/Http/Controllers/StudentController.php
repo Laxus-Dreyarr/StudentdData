@@ -843,13 +843,47 @@ class StudentController extends Controller
         }
     }
 
+    // public function updateSubjectGrade(Request $request)
+    // {
+    //     $user = $request->user();
+    //     $student = Student::where('student_id', $user->id)->first();
+        
+    //     if (!$student) {
+    //         return response()->json(['error' => 'Student not found'], 404);
+    //     }
+        
+    //     $validated = $request->validate([
+    //         'subject_id' => 'required|integer|exists:subjects,id',
+    //         'grade' => 'required|string|in:1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,4.0,5.0,INC,DRP,PASS,FAIL'
+    //     ]);
+        
+    //     try {
+    //         // Update the grade
+    //         $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
+    //             ->where('subject_id', $validated['subject_id'])
+    //             ->first();
+            
+    //         if ($enrolledSubject) {
+    //             $enrolledSubject->grade = $validated['grade'];
+    //             $enrolledSubject->save();
+                
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Grade updated successfully'
+    //             ]);
+    //         } else {
+    //             return response()->json(['error' => 'Subject not enrolled'], 404);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => 'Failed to update grade'], 500);
+    //     }
+    // }
     public function updateSubjectGrade(Request $request)
     {
-        $user = $request->user();
-        $student = Student::where('student_id', $user->id)->first();
+        $user = Auth::guard('student')->user();
         
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
         
         $validated = $request->validate([
@@ -858,14 +892,47 @@ class StudentController extends Controller
         ]);
         
         try {
+            DB::beginTransaction();
+            
+            // Get student info through user_info
+            $userInfo = $user->user_information;
+            
+            if (!$userInfo) {
+                return response()->json(['error' => 'Student information not found'], 404);
+            }
+            
+            $student = $userInfo->student;
+            
+            if (!$student) {
+                return response()->json(['error' => 'Student record not found'], 404);
+            }
+            
             // Update the grade
             $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
                 ->where('subject_id', $validated['subject_id'])
                 ->first();
             
             if ($enrolledSubject) {
+                $oldGrade = $enrolledSubject->grade;
                 $enrolledSubject->grade = $validated['grade'];
                 $enrolledSubject->save();
+                
+                // Handle INC (Incomplete) grades
+                if ($validated['grade'] === 'INC') {
+                    $this->handleIncompleteGrade($student->id, $validated['subject_id']);
+                }
+                
+                // Handle failed grades (4.0, 5.0, DRP)
+                if (in_array($validated['grade'], ['4.0', '5.0', 'DRP', '4', '5'])) {
+                    $this->handleFailedGrade($student->id, $validated['subject_id']);
+                }
+                
+                // If previously had INC and now has a different grade, mark as completed
+                if ($oldGrade === 'INC' && $validated['grade'] !== 'INC') {
+                    $this->completeIncompleteGradeRecord($student->id, $validated['subject_id'], $validated['grade']);
+                }
+                
+                DB::commit();
                 
                 return response()->json([
                     'success' => true,
@@ -875,7 +942,26 @@ class StudentController extends Controller
                 return response()->json(['error' => 'Subject not enrolled'], 404);
             }
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to update grade'], 500);
+            DB::rollBack();
+            Log::error('Update grade error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
+        }
+    }
+
+    private function completeIncompleteGradeRecord($student_id, $subject_id, $final_grade)
+    {
+        $incomplete = IncompleteGrade::where('student_id', $student_id)
+            ->where('subject_id', $subject_id)
+            ->where('status', 'Pending')
+            ->first();
+            
+        if ($incomplete) {
+            $incomplete->update([
+                'completion_date' => now(),
+                'final_grade' => $final_grade,
+                'status' => 'Completed',
+                'updated_at' => now()
+            ]);
         }
     }
 
