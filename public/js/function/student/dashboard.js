@@ -1863,7 +1863,7 @@ class CourseManager {
             }
         });
     }
-    
+
 
     processAddDropChanges(changes) {
         $.ajax({
