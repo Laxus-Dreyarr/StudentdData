@@ -1257,7 +1257,7 @@ class CourseManager {
         });
         
         // Submit Add/Drop Changes
-        // $(document).on('click', '#submitAddDrop', () => this.submitAddDropChanges());
+        $(document).on('click', '#submitAddDrop', () => this.submitAddDropChanges());
     }
 
     openAddDropModal() {
