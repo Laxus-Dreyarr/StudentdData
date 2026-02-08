@@ -1610,7 +1610,6 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
     <script>
-        // Simple initialization script
         $(document).ready(function() {
             // Get data from the hidden div
             const dataElement = document.getElementById('student-data');
@@ -1620,11 +1619,164 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 baseUrl: dataElement.dataset.baseUrl || ''
             };
             
-            // Initialize CourseManager with the data
+            // Initialize CourseManager WITHOUT the submit handler
             if (typeof CourseManager !== 'undefined') {
-                window.courseManager = new CourseManager(studentData);
+                // Create a modified CourseManager that doesn't attach the submit handler
+                class ModifiedCourseManager extends CourseManager {
+                    initEventListeners() {
+                        // Call parent's initEventListeners EXCEPT for the submit button
+                        // We'll manually attach only the listeners we need
+                        
+                        // Add/Drop Course Button
+                        $(document).on('click', '#addDropCourseBtn', () => this.openAddDropModal());
+                        
+                        // Enroll Now Button (when no courses)
+                        $(document).on('click', '#enrollNowBtn', () => $('#enrollmentModal').modal('show'));
+                        
+                        // Edit Grade Buttons
+                        $(document).on('click', '.btn-edit-grade', (e) => {
+                            const subjectId = $(e.currentTarget).data('subject-id');
+                            this.toggleGradeEditForm(subjectId, true);
+                        });
+                        
+                        $(document).on('click', '.cancel-edit', (e) => {
+                            const subjectId = $(e.currentTarget).data('subject-id');
+                            this.toggleGradeEditForm(subjectId, false);
+                        });
+                        
+                        // Save Grade
+                        $(document).on('click', '.save-grade', (e) => {
+                            const subjectId = $(e.currentTarget).data('subject-id');
+                            this.saveGrade(subjectId);
+                        });
+                        
+                        // Add/Drop Modal Tab Changes
+                        $(document).on('shown.bs.tab', '#addDropTabs button', (e) => {
+                            const target = $(e.target).data('bs-target');
+                            this.switchTab(target);
+                        });
+                        
+                        // DON'T attach the submitAddDrop handler here
+                        // $(document).on('click', '#submitAddDrop', () => this.submitAddDropChanges());
+                    }
+                }
+                
+                window.courseManager = new ModifiedCourseManager(studentData);
+            }
+
+            // Your custom submit handler
+            $('#submitAddDrop').off('click').click(function() {
+                if ($(this).prop('disabled')) return;
+                
+                // Gather data from the modal
+                const addedSubjects = [];
+                const droppedSubjects = [];
+                const subjectGrades = [];
+                
+                // Check "Add" tab for selected subjects with grades
+                $('#add-tab-pane .add-checkbox:checked').each(function() {
+                    const subjectId = $(this).data('subject-id');
+                    const gradeSelect = $(`.add-grade-select[data-subject-id="${subjectId}"]`);
+                    const grade = gradeSelect.val();
+                    
+                    if (subjectId && grade) {
+                        addedSubjects.push(parseInt(subjectId));
+                        subjectGrades.push({
+                            subject_id: parseInt(subjectId),
+                            grade: grade
+                        });
+                    }
+                });
+                
+                // Check "Drop" tab for selected subjects
+                $('.drop-checkbox:checked').each(function() {
+                    const subjectId = $(this).data('subject-id');
+                    if (subjectId) {
+                        droppedSubjects.push(parseInt(subjectId));
+                    }
+                });
+                
+                // Check "Update" tab for grade updates
+                $('.update-grade-select').each(function() {
+                    const subjectId = $(this).data('subject-id');
+                    const grade = $(this).val();
+                    
+                    if (subjectId && grade && grade.trim() !== '') {
+                        // Check if this is already in subjectGrades (from Add tab)
+                        const existingIndex = subjectGrades.findIndex(item => item.subject_id == subjectId);
+                        if (existingIndex === -1) {
+                            subjectGrades.push({
+                                subject_id: parseInt(subjectId),
+                                grade: grade
+                            });
+                        }
+                    }
+                });
+                
+                // Prepare data for submission
+                const data = {
+                    added_subjects: addedSubjects,
+                    dropped_subjects: droppedSubjects,
+                    subject_grades: subjectGrades
+                };
+                
+                console.log('Sending data:', data); // Debug log
+                
+                // Show loading state
+                const submitBtn = $(this);
+                submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+                
+                // Send AJAX request
+                $.ajax({
+                    url: '/student/update-subjects',
+                    method: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(response) {
+                        // Show success message
+                        showAlert('success', 'Subjects updated successfully!');
+                        
+                        // Close modal
+                        $('#addDropModal').modal('hide');
+                        
+                        // Refresh the page or update UI
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    },
+                    error: function(xhr) {
+                        const error = xhr.responseJSON?.error || 'Failed to update subjects';
+                        showAlert('error', error);
+                        submitBtn.prop('disabled', false).html('<i class="fas fa-check"></i> Submit Changes');
+                        console.error('Error details:', xhr); // Debug log
+                    }
+                });
+            });
+            
+            // Function to show alerts
+            function showAlert(type, message) {
+                const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+                const alertHtml = `
+                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                // Create alert container if it doesn't exist
+                if ($('.alert-container').length === 0) {
+                    $('body').append('<div class="alert-container fixed-top mt-5" style="z-index: 9999;"></div>');
+                }
+                $('.alert-container').html(alertHtml);
+                
+                // Auto-remove alert after 5 seconds
+                setTimeout(() => {
+                    $('.alert-container .alert').alert('close');
+                }, 5000);
             }
         });
-    </script>
+</script>
 </body>
 </html>
