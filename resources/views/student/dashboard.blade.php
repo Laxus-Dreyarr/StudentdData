@@ -289,6 +289,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         </div>
                     </div>
                     
+                    
                     <!-- Academic Progress -->
                     <div class="dashboard-card">
                         <div class="card-header">
