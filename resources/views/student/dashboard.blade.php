@@ -43,10 +43,10 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 </div>
                 
                 <div class="header-actions">
-                    <div class="search-box">
+                    <!-- <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" placeholder="Search courses, assignments...">
-                    </div>
+                    </div> -->
                     
                     <button class="notification-btn">
                         <i class="far fa-bell"></i>
@@ -250,45 +250,167 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 <div class="dashboard-grid">
                     
                     <!-- Campus Announcements -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-bullhorn"></i> Campus Announcements</h5>
-                            <a href="#" class="card-link">View All <i class="fas fa-chevron-right"></i></a>
+                    <!--  -->
+<div class="dashboard-card">
+    <div class="card-header">
+        <h5 class="card-title">
+            @if(isset($probation) && $probation)
+                <i class="fas fa-exclamation-circle text-danger"></i> Academic Status & Probation
+            @elseif(isset($warnings) && $warnings->count() > 0)
+                <i class="fas fa-exclamation-triangle text-warning"></i> Academic Warnings
+            @else
+                <i class="fas fa-check-circle text-success"></i> Academic Status
+            @endif
+        </h5>
+    </div>
+    
+    <div class="academic-status-list">
+        @if(isset($probation) && $probation)
+            <!-- Probation Status -->
+            <div class="academic-status-item status-probation">
+                <div class="status-header">
+                    <div class="status-title">
+                        <i class="fas fa-ban"></i> Academic Probation
+                        <span class="status-badge badge-danger">Active</span>
+                    </div>
+                    <div class="status-date">
+                        Since {{ \Carbon\Carbon::parse($probation->created_at)->format('M d, Y') }}
+                    </div>
+                </div>
+                <div class="status-content">
+                    <p><strong>Reason:</strong> {{ $probation->reason ?? 'Not specified' }}</p>
+                    <p><strong>Credit Limit:</strong> {{ $probation->credit_limit ?? 'N/A' }} units</p>
+                    <p><strong>Status:</strong> {{ $probation->status ?? 'Active' }}</p>
+                    
+                    @if($probation->credit_limit)
+                    <div class="alert alert-warning mt-2 p-2">
+                        <small><i class="fas fa-info-circle"></i> 
+                        You are restricted to enroll a maximum of {{ $probation->credit_limit }} units this semester.
+                        </small>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+        
+        <!-- Student Warnings -->
+        @if(isset($warnings) && $warnings->count() > 0)
+            @foreach($warnings as $warning)
+                <div class="academic-status-item status-warning">
+                    <div class="status-header">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            {{ $warning->warning_type ?? 'Warning' }}
+                            @if($warning->status == 'Active')
+                                <span class="status-badge badge-warning">Active</span>
+                            @elseif($warning->status == 'Cleared')
+                                <span class="status-badge badge-success">Cleared</span>
+                            @endif
                         </div>
-                        
-                        <div class="announcements-list">
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">Final Exam Schedule</div>
-                                    <div class="announcement-date">Today</div>
-                                </div>
-                                <div class="announcement-content">
-                                    The final examination schedule for the 2nd semester is now available on the student portal.
-                                </div>
-                            </div>
-                            
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">Scholarship Applications</div>
-                                    <div class="announcement-date">2 days ago</div>
-                                </div>
-                                <div class="announcement-content">
-                                    Applications for academic scholarships for next school year are now open until April 30.
-                                </div>
-                            </div>
-                            
-                            <div class="announcement-item">
-                                <div class="announcement-header">
-                                    <div class="announcement-title">University Week</div>
-                                    <div class="announcement-date">5 days ago</div>
-                                </div>
-                                <div class="announcement-content">
-                                    Join us for EVSU Ormoc Campus University Week celebration from April 10-14, 2024.
-                                </div>
-                            </div>
+                        <div class="status-date">
+                            Issued: {{ \Carbon\Carbon::parse($warning->issued_date)->format('M d, Y') }}
+                            @if($warning->expiry_date)
+                                | Expires: {{ \Carbon\Carbon::parse($warning->expiry_date)->format('M d, Y') }}
+                            @endif
                         </div>
                     </div>
-                    
+                    <div class="status-content">
+                        <p><strong>Reason:</strong> {{ $warning->reason ?? 'Not specified' }}</p>
+                        
+                        @if($warning->related_subject_ids)
+                            @php
+                                $subjectIds = json_decode($warning->related_subject_ids, true);
+                                $subjects = collect();
+                                if (is_array($subjectIds) && count($subjectIds) > 0) {
+                                    $subjects = \App\Models\Subject::whereIn('id', $subjectIds)->get();
+                                }
+                            @endphp
+                            @if($subjects->count() > 0)
+                                <p><strong>Related Subjects:</strong></p>
+                                <ul class="related-subjects">
+                                    @foreach($subjects as $subject)
+                                        <li>{{ $subject->code ?? '' }} - {{ $subject->name ?? 'Unknown' }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @endif
+                        
+                        @if($warning->expiry_date && \Carbon\Carbon::now()->gt($warning->expiry_date))
+                            <div class="alert alert-danger mt-2 p-2">
+                                <small><i class="fas fa-clock"></i> This warning has expired but requires attention.</small>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        @else
+            @if(!isset($probation) || !$probation)
+                <!-- No Warnings or Probation -->
+                <div class="academic-status-item status-good">
+                    <div class="status-header">
+                        <div class="status-title">
+                            <i class="fas fa-check-circle"></i> Good Standing
+                        </div>
+                    </div>
+                    <div class="status-content">
+                        <p>You have no active academic warnings or probation status.</p>
+                        <p class="text-success mt-2">
+                            <i class="fas fa-thumbs-up"></i> Keep up the good work!
+                        </p>
+                    </div>
+                </div>
+            @endif
+        @endif
+        
+        <!-- Incomplete Grades -->
+        @if(isset($incompleteGrades) && $incompleteGrades->count() > 0)
+            <div class="academic-status-item status-incomplete">
+                <div class="status-header">
+                    <div class="status-title">
+                        <i class="fas fa-clock"></i> Incomplete Grades
+                        <span class="status-badge badge-info">{{ $incompleteGrades->count() }}</span>
+                    </div>
+                </div>
+                <div class="status-content">
+                    <p>You have {{ $incompleteGrades->count() }} incomplete grade(s) that need completion:</p>
+                    <ul class="incomplete-list">
+                        @foreach($incompleteGrades as $inc)
+                            @php
+                                $subject = \App\Models\Subject::find($inc->subject_id);
+                                $deadline = \Carbon\Carbon::parse($inc->completion_deadline);
+                                $isNearDeadline = $deadline->diffInDays(\Carbon\Carbon::now()) <= 7;
+                            @endphp
+                            <li>
+                                <strong>{{ $subject->code ?? 'N/A' }}:</strong> 
+                                {{ $subject->name ?? 'Unknown Subject' }}
+                                @if($isNearDeadline)
+                                    <span class="text-danger">
+                                        <i class="fas fa-exclamation"></i> 
+                                        Deadline: {{ $deadline->format('M d, Y') }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">
+                                        Deadline: {{ $deadline->format('M d, Y') }}
+                                    </span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+    </div>
+    
+    @if((isset($warnings) && $warnings->count() > 0) || (isset($probation) && $probation))
+        <div class="card-footer">
+            <small class="text-muted">
+                <i class="fas fa-info-circle"></i> 
+                Contact your academic advisor if you have questions about your academic status.
+            </small>
+        </div>
+    @endif
+</div>
+
                     
                     <!-- Academic Progress -->
                     <div class="dashboard-card">
@@ -682,7 +804,8 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <section id="courses-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">My Courses</h2>
-                    <button class="btn-primary" id="addDropCourseBtn">Add/Drop Course</button>
+                    <!-- <button class="btn-primary" id="addDropCourseBtn">Add/Drop Course</button> -->
+                     <button class="btn-primary" id="addDropCourseBtn">Add Course</button>
                 </div>
                 
                 <div class="courses-grid">
@@ -713,9 +836,9 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                             <span class="grade-value {{ $subject['grade'] >= 3.0 ? 'grade-fail' : 'grade-pass' }}">
                                                 {{ $subject['grade'] ? $subject['grade'] : 'No Grade' }}
                                             </span>
-                                            <button class="btn-edit-grade" data-subject-id="{{ $subject['subject_id'] }}">
+                                            <!-- <button class="btn-edit-grade" data-subject-id="{{ $subject['subject_id'] }}">
                                                 <i class="fas fa-edit"></i>
-                                            </button>
+                                            </button> -->
                                         </div>
                                     </div>
                                     <div class="grade-edit-form" id="gradeForm{{ $subject['subject_id'] }}" style="display: none;">
@@ -738,7 +861,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                     <option value="FAIL" {{ $subject['grade'] == 'FAIL' ? 'selected' : '' }}>FAIL</option>
                                                 </select>
                                             </div>
-                                            <div class="col-4">
+                                            <!-- <div class="col-4">
                                                 <div class="d-flex gap-1">
                                                     <button class="btn btn-sm btn-success save-grade" 
                                                             data-subject-id="{{ $subject['subject_id'] }}">
@@ -749,15 +872,15 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </div>
-                                            </div>
+                                            </div> -->
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <button class="btn-outline view-details" style="width: 100%;" 
+                                <!-- <button class="btn-outline view-details" style="width: 100%;" 
                                         data-subject-id="{{ $subject['subject_id'] }}">
                                     View Course Details
-                                </button>
+                                </button> -->
                             </div>
                         </div>
                         @endforeach
@@ -777,12 +900,13 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <!-- Grades Content -->
             <section id="grades-content" class="content-section">
                 <div class="section-header">
-                    <h2 class="section-title">Grades & Transcript</h2>
+                    <h2 class="section-title">Grades</h2>
+                    <!-- <h2 class="section-title">Grades & Transcript</h2>
                     @if($hasEnrolledSubjects)
                         <button class="btn-primary" id="downloadTranscript">
                             <i class="fas fa-download"></i> Download Transcript
                         </button>
-                    @endif
+                    @endif -->
                 </div>
                 
                 @if($hasEnrolledSubjects)
@@ -1477,7 +1601,8 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addDropModalLabel">Add/Drop Courses</h5>
+                        <!-- <h5 class="modal-title" id="addDropModalLabel">Add/Drop Courses</h5> -->
+                         <h5 class="modal-title" id="addDropModalLabel">Add Courses</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -1492,11 +1617,11 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     <i class="fas fa-plus-circle"></i> Add Courses
                                 </button>
                             </li>
-                            <li class="nav-item" role="presentation">
+                            <!-- <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="drop-tab" data-bs-toggle="tab" data-bs-target="#drop-tab-pane" type="button">
                                     <i class="fas fa-minus-circle"></i> Drop Courses
                                 </button>
-                            </li>
+                            </li> -->
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update-tab-pane" type="button">
                                     <i class="fas fa-edit"></i> Update Grades

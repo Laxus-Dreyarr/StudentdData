@@ -1528,6 +1528,149 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
+/* Academic Status Styles */
+.academic-status-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.academic-status-item {
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background: white;
+    border-left: 4px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.academic-status-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.academic-status-item.status-probation {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.academic-status-item.status-warning {
+    border-left-color: #ffc107;
+    background-color: #fffbf0;
+}
+
+.academic-status-item.status-good {
+    border-left-color: #28a745;
+    background-color: #f8fff9;
+}
+
+.academic-status-item.status-incomplete {
+    border-left-color: #17a2b8;
+    background-color: #f0f9ff;
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.status-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-title i {
+    font-size: 1.1rem;
+}
+
+.status-date {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: right;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.status-content {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.status-content p {
+    margin-bottom: 8px;
+}
+
+.related-subjects,
+.incomplete-list {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.related-subjects li,
+.incomplete-list li {
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #eee;
+    padding: 10px 15px;
+    font-size: 0.85rem;
+}
+
+/* Scrollbar styling */
+.academic-status-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.academic-status-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.academic-status-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.academic-status-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1200px) {
     .sidebar {
