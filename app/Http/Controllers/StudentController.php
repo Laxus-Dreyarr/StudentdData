@@ -1182,27 +1182,36 @@ class StudentController extends Controller
         }
     }
 
+    // private function handleFailedGrade($student_id, $subject_id)
+    // {
+    //     // Check if failed subject already exists
+    //     $failedSubject = FailedSubject::where([
+    //         ['student_id', $student_id],
+    //         ['subject_id', $subject_id]
+    //     ])->first();
+            
+    //     if ($failedSubject) {
+    //         // Increment failure count
+    //         $newCount = intval($failedSubject->how_many) + 1;
+    //         $failedSubject->how_many = (string)$newCount;
+    //         $failedSubject->save();
+    //     } else {
+    //         // Create new failed subject record
+    //         FailedSubject::create([
+    //             'student_id' => $student_id,
+    //             'subject_id' => $subject_id,
+    //             'how_many' => '1'
+    //         ]);
+    //     }
+    // }
     private function handleFailedGrade($student_id, $subject_id)
     {
-        // Check if failed subject already exists
-        $failedSubject = FailedSubject::where([
-            ['student_id', $student_id],
-            ['subject_id', $subject_id]
-        ])->first();
-            
-        if ($failedSubject) {
-            // Increment failure count
-            $newCount = intval($failedSubject->how_many) + 1;
-            $failedSubject->how_many = (string)$newCount;
-            $failedSubject->save();
-        } else {
-            // Create new failed subject record
-            FailedSubject::create([
-                'student_id' => $student_id,
-                'subject_id' => $subject_id,
-                'how_many' => '1'
-            ]);
-        }
+        // Always insert a new record for each failing grade
+        FailedSubject::create([
+            'student_id' => $student_id,
+            'subject_id' => $subject_id,
+            'how_many' => '1'  // Always set to '1' since each record represents one failure
+        ]);
     }
 
     private function updateStudentWarnings($student_id)
