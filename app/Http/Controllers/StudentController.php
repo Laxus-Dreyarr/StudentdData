@@ -813,6 +813,15 @@ class StudentController extends Controller
             ->where('status', 'Pending')
             ->get();
 
+        // 
+        $allEnrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+            ->with('subject')
+            ->get()
+            ->groupBy(function($enrolled) {
+                $subject = $enrolled->subject;
+                return $subject->year_level . '|' . $subject->semester;
+            });
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -840,7 +849,8 @@ class StudentController extends Controller
             'academicStanding',
             'warnings',
             'probation',
-            'incompleteGrades'
+            'incompleteGrades',
+            'allEnrolledSubjects'
         ));
 
     }
