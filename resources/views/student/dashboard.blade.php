@@ -799,102 +799,54 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     </div>
                 </div>
             </section>
-            
+
 
             <!-- Courses Content -->
             <section id="courses-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">My Courses</h2>
-                    <!-- <button class="btn-primary" id="addDropCourseBtn">Add/Drop Course</button> -->
-                     <button class="btn-primary" id="addDropCourseBtn">Add Course</button>
+                    <button class="btn-primary" id="addDropCourseBtn">Add Course</button>
                 </div>
-                
-                <div class="courses-grid">
-                    @if(count($enrolledSubjects) > 0)
-                        @foreach($enrolledSubjects as $subject)
-                        <div class="course-card" data-subject-id="{{ $subject['subject_id'] }}">
-                            <div class="course-header">
-                                <div class="course-code">{{ $subject['subject_code'] }}</div>
-                                <div class="course-name">{{ $subject['subject_name'] }}</div>
-                                <div class="course-units">{{ $subject['units'] }} units</div>
-                            </div>
-                            <div class="course-body">
-                                @if($subject['schedule'])
-                                <div class="course-schedule">
-                                    <i class="fas fa-calendar"></i> {{ $subject['schedule']['day'] }} • 
-                                    {{ \Carbon\Carbon::parse($subject['schedule']['start_time'])->format('g:i A') }}-{{ \Carbon\Carbon::parse($subject['schedule']['end_time'])->format('g:i A') }}
-                                </div>
-                                <div class="course-schedule">
-                                    <i class="fas fa-map-marker-alt"></i> {{ $subject['schedule']['room'] }}
-                                    <span class="badge">{{ $subject['schedule']['type'] }}</span>
-                                </div>
-                                @endif
-                                
-                                <div class="course-grade">
-                                    <div class="grade-header">
-                                        <span class="grade-label">Current Grade</span>
-                                        <div class="grade-actions">
-                                            <span class="grade-value {{ $subject['grade'] >= 3.0 ? 'grade-fail' : 'grade-pass' }}">
-                                                {{ $subject['grade'] ? $subject['grade'] : 'No Grade' }}
-                                            </span>
-                                            <!-- <button class="btn-edit-grade" data-subject-id="{{ $subject['subject_id'] }}">
-                                                <i class="fas fa-edit"></i>
-                                            </button> -->
-                                        </div>
-                                    </div>
-                                    <div class="grade-edit-form" id="gradeForm{{ $subject['subject_id'] }}" style="display: none;">
-                                        <div class="row g-2 mt-2">
-                                            <div class="col-8">
-                                                <select class="form-select form-select-sm grade-select-edit" 
-                                                        id="gradeSelect{{ $subject['subject_id'] }}">
-                                                    <option value="">-- Select Grade --</option>
-                                                    @for($i = 1.0; $i <= 3.0; $i += 0.1)
-                                                        @php $grade = number_format($i, 1); @endphp
-                                                        <option value="{{ $grade }}" {{ $subject['grade'] == $grade ? 'selected' : '' }}>
-                                                            {{ $grade }}
-                                                        </option>
-                                                    @endfor
-                                                    <option value="4.0" {{ $subject['grade'] == '4.0' ? 'selected' : '' }}>4.0</option>
-                                                    <option value="5.0" {{ $subject['grade'] == '5.0' ? 'selected' : '' }}>5.0</option>
-                                                    <option value="INC" {{ $subject['grade'] == 'INC' ? 'selected' : '' }}>INC</option>
-                                                    <option value="DRP" {{ $subject['grade'] == 'DRP' ? 'selected' : '' }}>DRP</option>
-                                                    <option value="PASS" {{ $subject['grade'] == 'PASS' ? 'selected' : '' }}>PASS</option>
-                                                    <option value="FAIL" {{ $subject['grade'] == 'FAIL' ? 'selected' : '' }}>FAIL</option>
-                                                </select>
-                                            </div>
-                                            <!-- <div class="col-4">
-                                                <div class="d-flex gap-1">
-                                                    <button class="btn btn-sm btn-success save-grade" 
-                                                            data-subject-id="{{ $subject['subject_id'] }}">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-secondary cancel-edit" 
-                                                            data-subject-id="{{ $subject['subject_id'] }}">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </div>
-                                            </div> -->
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- <button class="btn-outline view-details" style="width: 100%;" 
-                                        data-subject-id="{{ $subject['subject_id'] }}">
-                                    View Course Details
-                                </button> -->
-                            </div>
-                        </div>
-                        @endforeach
-                    @else
-                        <div class="no-courses">
-                            <div class="empty-state">
-                                <i class="fas fa-book-open fa-3x mb-3 text-muted"></i>
-                                <h4>No Courses Enrolled</h4>
-                                <p class="text-muted">You are not enrolled in any courses for this semester.</p>
-                                <button class="btn-primary mt-2" id="enrollNowBtn">Enroll Now</button>
-                            </div>
-                        </div>
-                    @endif
+
+                <div class="courses-table-responsive">
+                    @forelse($allEnrolledSubjects as $groupKey => $subjects)
+                        @php
+                            [$year, $sem] = explode('|', $groupKey);
+                        @endphp
+                        <table class="courses-table">
+                            <thead>
+                                <tr class="year-sem-row">
+                                    <th colspan="5">{{ $year }} – {{ $sem }}</th>
+                                </tr>
+                                <tr class="header-row">
+                                    <th>Code</th>
+                                    <th>Subject</th>
+                                    <th>Units</th>
+                                    <th>Grade</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($subjects as $enrolled)
+                                    @php $subject = $enrolled->subject; @endphp
+                                    <tr>
+                                        <td>{{ $subject->code }}</td>
+                                        <td>{{ $subject->name }}</td>
+                                        <td>{{ $subject->units }}</td>
+                                        <td>{{ $enrolled->grade ?? 'No Grade' }}</td>
+                                        <td class="course-action">
+                                            <button class="btn-update-grade" data-subject-id="{{ $subject['subject_id'] }}">
+                                                Update
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        <br>
+                    @empty
+                        <p>No subjects enrolled.</p>
+                    @endforelse
                 </div>
             </section>
 
