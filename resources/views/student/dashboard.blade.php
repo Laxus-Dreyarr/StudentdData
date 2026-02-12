@@ -799,6 +799,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                     </div>
                 </div>
             </section>
+            
 
             <!-- Courses Content -->
             <section id="courses-content" class="content-section">
