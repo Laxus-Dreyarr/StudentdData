@@ -1334,6 +1334,7 @@ class CourseManager {
                 <td>${subject.grade || 'No Grade'}</td>
             </tr>`;
             
+            
             // Update grades row
             updateHtml += `<tr>
                 <td>${subject.subject_code}</td>
