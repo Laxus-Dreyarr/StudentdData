@@ -73,6 +73,8 @@ Route::middleware(['student.auth'])->group(function () {
     Route::post('/student/warnings/{warning}/acknowledge', [StudentController::class, 'acknowledgeWarning']);
     Route::get('/student/check-new-warnings', [StudentController::class, 'checkNewWarnings']);
     Route::get('/student/academic-status', [StudentController::class, 'getAcademicStatus']);
+
+    Route::put('/student/grade/{enrolledId}', [StudentController::class, 'updateGrade'])->name('student.updateGrade');
     // Add other protected routes here
 });
 

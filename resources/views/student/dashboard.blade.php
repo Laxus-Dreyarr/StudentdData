@@ -833,9 +833,41 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                         <td>{{ $subject->code }}</td>
                                         <td>{{ $subject->name }}</td>
                                         <td>{{ $subject->units }}</td>
-                                        <td>{{ $enrolled->grade ?? 'No Grade' }}</td>
+                                        <td class="course-grade">
+                                            {{-- Grade display --}}
+                                            <span class="grade-display grade-value 
+                                                {{ isset($enrolled->grade) && is_numeric($enrolled->grade) && $enrolled->grade >= 3.0 ? 'grade-fail' : 'grade-pass' }}">
+                                                {{ $enrolled->grade ?? 'No Grade' }}
+                                            </span>
+
+                                            {{-- Hidden grade edit form --}}
+                                            <div class="grade-edit-form" id="gradeForm{{ $enrolled->id }}" style="display: none;">
+                                                <select class="grade-select-edit" id="gradeSelect{{ $enrolled->id }}">
+                                                    <option value="">-- Select Grade --</option>
+                                                    @for($tenths = 10; $tenths <= 30; $tenths++)
+                                                        @php $grade = number_format($tenths / 10, 1); @endphp
+                                                        <option value="{{ $grade }}" {{ ($enrolled->grade ?? '') == $grade ? 'selected' : '' }}>
+                                                            {{ $grade }}
+                                                        </option>
+                                                    @endfor
+                                                    <option value="4.0" {{ ($enrolled->grade ?? '') == '4.0' ? 'selected' : '' }}>4.0</option>
+                                                    <option value="5.0" {{ ($enrolled->grade ?? '') == '5.0' ? 'selected' : '' }}>5.0</option>
+                                                    <option value="INC" {{ ($enrolled->grade ?? '') == 'INC' ? 'selected' : '' }}>INC</option>
+                                                    <option value="DRP" {{ ($enrolled->grade ?? '') == 'DRP' ? 'selected' : '' }}>DRP</option>
+                                                </select>
+                                                <div class="edit-actions">
+                                                    <button class="btn-save-grade" data-enrolled-id="{{ $enrolled->id }}">
+                                                        <i class="fas fa-check"></i> Save
+                                                    </button>
+                                                    <button class="btn-cancel-edit" data-enrolled-id="{{ $enrolled->id }}">
+                                                        <i class="fas fa-times"></i> Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+
                                         <td class="course-action">
-                                            <button class="btn-update-grade" data-subject-id="{{ $subject['subject_id'] }}">
+                                            <button class="btn-update-grade" data-enrolled-id="{{ $enrolled->id }}">
                                                 Update
                                             </button>
                                         </td>
@@ -1564,23 +1596,23 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         </div>
                         
                         <!-- Tabs for Add/Drop -->
-                        <ul class="nav nav-tabs mb-4" id="addDropTabs" role="tablist">
+                        <!-- <ul class="nav nav-tabs mb-4" id="addDropTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-tab-pane" type="button">
                                     <i class="fas fa-plus-circle"></i> Add Courses
                                 </button>
                             </li>
-                            <!-- <li class="nav-item" role="presentation">
+                            <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="drop-tab" data-bs-toggle="tab" data-bs-target="#drop-tab-pane" type="button">
                                     <i class="fas fa-minus-circle"></i> Drop Courses
                                 </button>
-                            </li> -->
+                            </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update-tab-pane" type="button">
                                     <i class="fas fa-edit"></i> Update Grades
                                 </button>
                             </li>
-                        </ul>
+                        </ul> -->
                         
                         <div class="tab-content" id="addDropTabsContent">
                             <!-- Add Courses Tab -->
@@ -1607,14 +1639,14 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             </div>
                             
                             <!-- Update Grades Tab -->
-                            <div class="tab-pane fade" id="update-tab-pane" role="tabpanel">
+                            <!-- <div class="tab-pane fade" id="update-tab-pane" role="tabpanel">
                                 <div id="updateGradesContent">
                                     <h6>Update Grades for Enrolled Courses</h6>
                                     <div id="gradesUpdateList">
-                                        <!-- Will be populated with enrolled courses for grade update -->
+                                    
                                     </div>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                         
                         <!-- Selected Courses Summary -->
@@ -1688,6 +1720,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
+    <script src="{{asset('js/function/student/grade-update.js')}}"></script>
     <script>
         $(document).ready(function() {
             // Get data from the hidden div

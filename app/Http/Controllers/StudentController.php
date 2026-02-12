@@ -964,6 +964,7 @@ class StudentController extends Controller
         }
     }
 
+    // This is for adding subjects
     public function updateSubjects(Request $request)
     {
         $request->validate([
@@ -1118,6 +1119,106 @@ class StudentController extends Controller
             DB::rollBack();
             Log::error('Update subjects error: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to update subjects: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // This is for updating the grades
+    public function updateGrade(Request $request, $enrolledId)
+    {
+        $request->validate([
+            'grade' => 'required|string'
+        ]);
+
+        $user = Auth::guard('student')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Get student record
+            $userInfo = $user->user_information;
+            if (!$userInfo) {
+                return response()->json(['error' => 'Student information not found'], 404);
+            }
+
+            $student = $userInfo->student;
+            if (!$student) {
+                return response()->json(['error' => 'Student record not found'], 404);
+            }
+
+            // Find the enrolled subject record that belongs to this student
+            $enrolledSubject = EnrolledSubjects::where('id', $enrolledId)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if (!$enrolledSubject) {
+                return response()->json(['error' => 'Enrolled subject not found'], 404);
+            }
+
+            $subject_id = $enrolledSubject->subject_id;
+            $grade = strtoupper(trim($request->grade));
+            $oldGrade = $enrolledSubject->grade;
+
+            // Normalize numeric grades
+            $normalizedGrade = $grade;
+            if ($grade === '4') $normalizedGrade = '4.0';
+            if ($grade === '5') $normalizedGrade = '5.0';
+
+            // Update the grade
+            $enrolledSubject->grade = $grade;
+            $enrolledSubject->save();
+
+            // Define failing grades
+            $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
+            $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
+            $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
+
+            // If grade is passing, clean up any existing failure/incomplete records
+            if (!$isFailingGrade) {
+                FailedSubject::where('student_id', $student->id)
+                    ->where('subject_id', $subject_id)
+                    ->delete();
+
+                IncompleteGrade::where('student_id', $student->id)
+                    ->where('subject_id', $subject_id)
+                    ->delete();
+
+                // If it was failing before, a warning update might be needed
+                if ($wasFailingGrade) {
+                    $needWarningUpdate = true;
+                }
+            }
+
+            // Handle specific grade types
+            if ($grade === 'INC') {
+                $this->handleIncompleteGrade($student->id, $subject_id);
+                $needWarningUpdate = true;
+            } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
+                $this->handleFailedGrade($student->id, $subject_id);
+                $needWarningUpdate = true;
+            }
+
+            // Recalculate warnings and probation status if something changed
+            if (isset($needWarningUpdate) && $needWarningUpdate) {
+                $this->updateStudentWarnings($student->id);
+                $this->cleanupWarningsAndProbation($student->id);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Grade updated successfully',
+                'grade' => $grade,
+                'enrolled_id' => $enrolledId
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update single grade error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
         }
     }
 
