@@ -822,6 +822,13 @@ class StudentController extends Controller
                 return $subject->year_level . '|' . $subject->semester;
             });
 
+        // number of subjects the student has ever failed (unique)
+        // $count_failed_subjects = FailedSubject::where('student_id', $student->id)->count();
+
+        // total failed attempts (e.g., failing a subject twice counts as 2)
+        $count_failed_subjects = FailedSubject::where('student_id', $student->id)->sum('how_many');
+                
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -850,7 +857,8 @@ class StudentController extends Controller
             'warnings',
             'probation',
             'incompleteGrades',
-            'allEnrolledSubjects'
+            'allEnrolledSubjects',
+            'count_failed_subjects'
         ));
 
     }
