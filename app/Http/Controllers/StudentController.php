@@ -1565,7 +1565,7 @@ class StudentController extends Controller
     }
 
 
-    // Add a new method to handle subject enrollment submission
+    // Add a new method to handle subject enrollment submission. This will be called during first time using the system.
     public function enrollSubjects(Request $request)
     {
         try {
@@ -1595,6 +1595,21 @@ class StudentController extends Controller
             $enrollments = [];
             $totalGradePoints = 0;
             $totalUnits = 0;
+
+            // Get current date for SY and SEM calculation
+            $currentYear = date('Y');
+            $currentMonth = date('n'); // 1-12
+            
+            // Calculate School Year and Semester
+            if ($currentMonth >= 7 && $currentMonth <= 12) {
+                // July to December: First Semester of current school year
+                $schoolYear = $currentYear . '-' . ($currentYear + 1);
+                $semester = 'SEM 1';
+            } else {
+                // January to June: Second Semester of previous school year
+                $schoolYear = ($currentYear - 1) . '-' . $currentYear;
+                $semester = 'SEM 2';
+            }
             
             // Process each subject
             foreach ($enrolledSubjects as $subject) {
@@ -1615,7 +1630,9 @@ class StudentController extends Controller
                 EnrolledSubjects::create([
                     'student_id' => $studentID,
                     'subject_id' => $subject['subject_id'],
-                    'grade' => $subject['grade']
+                    'grade' => $subject['grade'],
+                    'sem' => $subject['semester'] ?? null,
+                    'sy' => $schoolYear ?? null
                 ]);
                 
                 // Calculate for GWA
