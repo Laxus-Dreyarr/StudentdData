@@ -1572,9 +1572,9 @@ class StudentController extends Controller
             $user = Auth::guard('student')->user();
             $student = $user->user_information->student;
             $studentID = $student->id;
-            // $studentId = $request->input('student_id');
+
             $enrolledSubjects = $request->input('enrolled_subjects');
-            
+
             // Validate student exists
             $student = Student::where('id', $studentID)->first();
             if (!$student) {
@@ -1583,7 +1583,7 @@ class StudentController extends Controller
                     'message' => 'Student not found'
                 ]);
             }
-            
+
             // Validate input
             if (empty($enrolledSubjects) || !is_array($enrolledSubjects)) {
                 return response()->json([
@@ -1591,82 +1591,122 @@ class StudentController extends Controller
                     'message' => 'No subjects selected'
                 ]);
             }
-            
+
             $enrollments = [];
             $totalGradePoints = 0;
             $totalUnits = 0;
 
-            // Get current date for SY and SEM calculation
+            // Get current date parts
             $currentYear = date('Y');
             $currentMonth = date('n'); // 1-12
-            
-            // Calculate School Year and Semester
-            if ($currentMonth >= 7 && $currentMonth <= 12) {
-                // July to December: First Semester of current school year
-                $schoolYear = $currentYear . '-' . ($currentYear + 1);
-                $semester = 'SEM 1';
-            } else {
-                // January to June: Second Semester of previous school year
-                $schoolYear = ($currentYear - 1) . '-' . $currentYear;
-                $semester = 'SEM 2';
-            }
-            
-            // Process each subject
+
             foreach ($enrolledSubjects as $subject) {
                 if (!isset($subject['subject_id'], $subject['grade'])) {
                     continue;
                 }
-                
-                // Get subject details for units
+
+                // Get subject details including its fixed semester
                 $subjectDetail = Subject::find($subject['subject_id']);
                 if (!$subjectDetail) {
                     continue;
                 }
-                
+
+                $units = $subjectDetail->units ?: 3; // default to 3 if not set
+                $subjectSemester = $subjectDetail->semester; // '1st Sem', '2nd Sem', or 'Summer'
+
+                // Determine school year based on subject's semester
+                $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
+
                 // Convert grade to numeric for GWA calculation
                 $numericGrade = $this->convertGradeToNumeric($subject['grade']);
-                
-                // Save to enrolled_subjects table
+
+                // Save enrollment with correct semester and school year
                 EnrolledSubjects::create([
                     'student_id' => $studentID,
                     'subject_id' => $subject['subject_id'],
-                    'grade' => $subject['grade'],
-                    'sem' => $subject['semester'] ?? null,
-                    'sy' => $schoolYear ?? null
+                    'grade'      => $subject['grade'],
+                    'sem'        => $subjectSemester,  // from the subject table
+                    'sy'         => $schoolYear
                 ]);
-                
-                // Calculate for GWA
-                $units = $subjectDetail->units ?: 3; // Default to 3 units if not specified
+
+                // Accumulate GWA data
                 $totalGradePoints += ($numericGrade * $units);
                 $totalUnits += $units;
-                
+
                 $enrollments[] = [
                     'subject_id' => $subject['subject_id'],
-                    'grade' => $subject['grade'],
-                    'units' => $units
+                    'grade'      => $subject['grade'],
+                    'units'      => $units,
+                    'semester'   => $subjectSemester,
+                    'school_year' => $schoolYear
                 ];
             }
-            
+
             // Calculate GWA
             $gwa = $totalUnits > 0 ? $totalGradePoints / $totalUnits : 0;
-            
-            // Update student status to officially enrolled
+
+            // Update student status
             $student->status = 'Officially Enrolled';
             $student->enrolled = 1;
             $student->save();
-            
+
             return response()->json([
-                'success' => true,
-                'message' => 'Subjects enrolled successfully',
-                'gwa' => number_format($gwa, 2),
+                'success'          => true,
+                'message'          => 'Subjects enrolled successfully',
+                'gwa'              => number_format($gwa, 2),
                 'enrollment_count' => count($enrollments)
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Determine the school year based on the subject's semester and current date.
+     *
+     * @param string $semester  (e.g., '1st Sem', '2nd Sem', 'Summer')
+     * @param int $year         current year (e.g., 2025)
+     * @param int $month        current month (1-12)
+     * @return string           school year in format "YYYY-YYYY"
+     */
+    private function determineSchoolYear($semester, $year, $month)
+    {
+        switch ($semester) {
+            case '1st Sem':
+                // First semester always belongs to the academic year that starts in the current calendar year.
+                // Example: If today is Jan 2025, the upcoming first semester (Aug 2025) is 2025-2026.
+                // If today is Aug 2025, the current first semester is also 2025-2026.
+                return $year . '-' . ($year + 1);
+
+            case '2nd Sem':
+                // Second semester starts in January.
+                // If we are in months January–June, we are in the second semester of the academic year that began last year.
+                // If we are in months July–December, we are approaching the second semester of the next academic year.
+                if ($month >= 1 && $month <= 6) {
+                    return ($year - 1) . '-' . $year;
+                } else {
+                    return $year . '-' . ($year + 1);
+                }
+
+            case 'Summer':
+                // Summer follows the second semester, so use the same logic as second semester.
+                if ($month >= 1 && $month <= 6) {
+                    return ($year - 1) . '-' . $year;
+                } else {
+                    return $year . '-' . ($year + 1);
+                }
+
+            default:
+                // Fallback to the global logic you originally used
+                if ($month >= 7 && $month <= 12) {
+                    return $year . '-' . ($year + 1);
+                } else {
+                    return ($year - 1) . '-' . $year;
+                }
         }
     }
 
