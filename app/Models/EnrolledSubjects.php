@@ -19,7 +19,7 @@ class EnrolledSubjects extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'student_id', 'subject_id', 'grade'
+        'student_id', 'subject_id', 'grade', 'sem', 'sy'
     ];
     public function student()
     {
