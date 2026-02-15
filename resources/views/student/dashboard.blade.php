@@ -205,7 +205,28 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                             N/A
                                         @endif
                                     </h3>
-                                    <p>Current GPA</p>
+                                    <p>Current GWA</p>
+                                    @if($hasEnrolledSubjects && isset($gwa) && $gwa > 0)
+                                        <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
+                                            Overall: {{ number_format($gwa, 2) }}
+                                        </small> -->
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="welcome-stat">
+                                <div class="stat-icon">
+                                    <i class="fas fa-laptop-code"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>
+                                        @if($hasEnrolledSubjects && isset($currentYearGWA))
+                                            {{ number_format($features['programming_gpa'], 2) }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </h3>
+                                    <p>Programming GWA</p>
                                     @if($hasEnrolledSubjects && isset($gwa) && $gwa > 0)
                                         <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
                                             Overall: {{ number_format($gwa, 2) }}
@@ -256,12 +277,28 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         </div>
                     </div>
                 </section>
-                
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div id="gpa_chart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div id="completion_chart" style="width: 100%; height: 100px;"></div>
+                    </div>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div id="trend_chart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                </div>
                 <!-- Dashboard Grid -->
                 <div class="dashboard-grid">
                     
                     <!-- Campus Announcements -->
                     <!--  -->
+
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h5 class="card-title">
@@ -422,7 +459,6 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                         @endif
                     </div>
 
-                    
                     <!-- Academic Progress -->
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -1732,6 +1768,126 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="{{asset('js/jquery.js')}}"></script>
     <script src="{{asset('js/function/student/dashboard.js')}}"></script>
     <script src="{{asset('js/function/student/grade-update.js')}}"></script>
+    <!-- Google Charts Loader -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { packages: ['corechart'] });
+        google.charts.setOnLoadCallback(drawCharts);
+
+        // Convert PHP arrays to JavaScript
+        const features = @json($features);
+        const termGpas = @json($features['term_gpas'] ?? []);
+
+        function drawCharts() {
+            drawGPAChart();
+            drawCompletionChart();
+            drawTrendChart();
+        }
+
+        // GPA Comparison Column Chart
+        function drawGPAChart() {
+            var data = google.visualization.arrayToDataTable([
+                ['Metric', 'GPA', { role: 'style' }],
+                ['Overall', Math.round((features.overall_gwa || 0) * 100) / 100, getColor(features.overall_gwa)],
+                ['Domain',  Math.round((features.domain_gwa || 0) * 100) / 100, getColor(features.domain_gwa)],
+                ['Programming', Math.round((features.programming_gpa || 0) * 100) / 100, getColor(features.programming_gpa)]
+            ]);
+
+            var options = {
+                title: 'GPA Comparison (1.0 = best)',
+                width: '100%',
+                height: 300,
+                bar: { groupWidth: '70%' },
+                legend: { position: 'none' },
+                vAxis: {
+                    title: 'GPA',
+                    format: '#.##',          // <-- this formats the axis labels to two decimals
+                    minValue: 1.0,
+                    maxValue: 5.0,
+                    direction: -1,
+                    viewWindow: { min: 1.0, max: 5.0 }
+                },
+                hAxis: { title: 'Metric' }
+            };
+
+            var chart = new google.visualization.ColumnChart(document.getElementById('gpa_chart'));
+            chart.draw(data, options);
+        }
+
+        // Helper for GPA colors
+        function getColor(gpa) {
+            if (!gpa) return 'gray';
+            if (gpa <= 1.5) return 'green';
+            if (gpa <= 2.0) return '#90EE90'; // light green
+            if (gpa <= 3.0) return 'orange';
+            return 'red';
+        }
+
+        // Course Completion Ratio (horizontal bar)
+        function drawCompletionChart() {
+            var completion = features.course_completion_ratio ? features.course_completion_ratio * 100 : 0;
+            var data = google.visualization.arrayToDataTable([
+                ['', 'Completion %', { role: 'style' }],
+                ['Completion', completion, 'blue']
+            ]);
+
+            var options = {
+                title: 'Course Completion Ratio',
+                width: '100%',
+                height: 120,
+                legend: { position: 'none' },
+                hAxis: {
+                    minValue: 0,
+                    maxValue: 100,
+                    ticks: [0, 20, 40, 60, 80, 100],
+                    title: 'Percent'
+                },
+                bars: 'horizontal'
+            };
+
+            var chart = new google.visualization.BarChart(document.getElementById('completion_chart'));
+            chart.draw(data, options);
+        }
+
+        // GPA Trend Line Chart
+        function drawTrendChart() {
+            if (!termGpas || termGpas.length === 0) return;
+
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Term');
+            data.addColumn('number', 'GPA');
+
+            termGpas.forEach(function(term) {
+                data.addRow([term.year + ' ' + term.sem, term.gwa]);
+            });
+
+            var options = {
+                title: 'GPA Trend Over Terms',
+                width: '100%',
+                height: 300,
+                vAxis: {
+                    direction: -1,
+                    minValue: 1.0,
+                    maxValue: 5.0,
+                    title: 'GPA'
+                },
+                trendlines: {
+                    0: {
+                        type: 'linear',
+                        color: 'red',
+                        lineWidth: 2,
+                        opacity: 0.5,
+                        visibleInLegend: true,
+                        labelInLegend: 'Trend (slope: {{ $features['gpa_trend_slope'] }})'
+                    }
+                },
+                legend: { position: 'bottom' }
+            };
+
+            var chart = new google.visualization.LineChart(document.getElementById('trend_chart'));
+            chart.draw(data, options);
+        }
+    </script>
     <script>
         $(document).ready(function() {
             // Get data from the hidden div
@@ -1900,6 +2056,6 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                 }, 5000);
             }
         });
-</script>
+    </script>
 </body>
 </html>
