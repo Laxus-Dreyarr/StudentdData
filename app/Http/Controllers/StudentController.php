@@ -567,6 +567,243 @@ class StudentController extends Controller
     }
     
 
+
+    /**
+     * Compute predictive risk features for a given student.
+     *
+     * @param int $studentId The internal student ID (from `students` table)
+     * @return array Associative array of features
+     */
+    public function computeStudentRiskFeatures($studentId)
+    {
+        $student = Student::with('user_information.user')->find($studentId);
+        if (!$student) {
+            return ['error' => 'Student not found'];
+        }
+
+        // 1. Fetch all enrolled subjects with their subject details
+        $enrollments = EnrolledSubjects::where('student_id', $studentId)
+            ->with('subject')
+            ->get();
+
+        // Helper to convert grade to numeric (1.0–5.0) or null for INC/DRP/etc.
+        $gradeToNumeric = function($grade) {
+            return $this->convertGradeToNumeric($grade); // already exists in your controller
+        };
+
+        // Initialize accumulators
+        $totalUnitsOverall = 0;
+        $totalGradePointsOverall = 0;
+        $totalUnitsDomain = 0;
+        $totalGradePointsDomain = 0;
+        $totalUnitsProgramming = 0;
+        $totalGradePointsProgramming = 0;
+
+        $totalUnitsAttempted = 0;
+        $totalUnitsEarned = 0;
+
+        // For trend analysis: group by term (year + semester)
+        $termData = []; // key: 'year|semOrder', value: ['sumGradePoints' => 0, 'sumUnits' => 0, 'year' => year, 'sem' => sem]
+
+        // Semester order mapping for sorting
+        $semOrder = ['1st Sem' => 1, '2nd Sem' => 2, 'Summer' => 3];
+
+        // Predefine programming subject keywords (case-insensitive)
+        $programmingKeywords = [
+            'programming', 'object oriented', 'data structures', 'algorithms',
+            'event-driven', 'web', 'mobile', 'integrative', 'application development',
+            'software engineering', 'capstone', 'project'
+        ];
+
+        // Iterate over all enrollments
+        foreach ($enrollments as $enroll) {
+            $subject = $enroll->subject;
+            if (!$subject) continue;
+
+            $units = $subject->units ?? 3;
+            $grade = $enroll->grade;
+            $numericGrade = $gradeToNumeric($grade);
+
+            // Skip non-numeric grades (INC, DRP, etc.) for GPA calculations
+            if ($numericGrade !== null) {
+                // Overall GWA
+                $totalUnitsOverall += $units;
+                $totalGradePointsOverall += $numericGrade * $units;
+
+                // Domain‑specific (major subjects: code starts with IT or NET)
+                $code = $subject->code ?? '';
+                if (preg_match('/^IT|^NET/i', $code)) {
+                    $totalUnitsDomain += $units;
+                    $totalGradePointsDomain += $numericGrade * $units;
+                }
+
+                // Programming & core IT performance
+                $name = $subject->name ?? '';
+                if ($this->isProgrammingSubject($code, $name, $programmingKeywords)) {
+                    $totalUnitsProgramming += $units;
+                    $totalGradePointsProgramming += $numericGrade * $units;
+                }
+
+                // For course completion ratio: passing if numeric grade <= 3.0 (PH passing)
+                $totalUnitsAttempted += $units;
+                if ($numericGrade <= 3.0) {
+                    $totalUnitsEarned += $units;
+                }
+
+                // Collect term data for trend
+                $year = $enroll->year;
+                $sem = $enroll->sem;
+                if ($year && $sem && isset($semOrder[$sem])) {
+                    $termKey = $year . '|' . $semOrder[$sem];
+                    if (!isset($termData[$termKey])) {
+                        $termData[$termKey] = [
+                            'sumGradePoints' => 0,
+                            'sumUnits' => 0,
+                            'year' => $year,
+                            'sem' => $sem,
+                            'order' => $semOrder[$sem]
+                        ];
+                    }
+                    $termData[$termKey]['sumGradePoints'] += $numericGrade * $units;
+                    $termData[$termKey]['sumUnits'] += $units;
+                }
+            }
+        }
+
+        // 2. Compute overall GWA
+        $overallGWA = $totalUnitsOverall > 0 ? $totalGradePointsOverall / $totalUnitsOverall : null;
+
+        // 3. Domain‑specific GWA
+        $domainGWA = $totalUnitsDomain > 0 ? $totalGradePointsDomain / $totalUnitsDomain : null;
+
+        // 4. Programming GPA
+        $programmingGPA = $totalUnitsProgramming > 0 ? $totalGradePointsProgramming / $totalUnitsProgramming : null;
+
+        // 5. Course completion ratio
+        $completionRatio = $totalUnitsAttempted > 0 ? $totalUnitsEarned / $totalUnitsAttempted : null;
+
+        // 6. Failed subject count (from failed_subjects table)
+        $failedSubjectCount = FailedSubject::where('student_id', $studentId)->sum('how_many');
+
+        // 7. GPA trend over time
+        $gpaTrend = $this->computeGpaTrend($termData);
+
+        // 8. Probation indicators
+        $hasProbation = StudentProbation::where('student_id', $studentId)->exists();
+
+        // 9. Additional: programming failure count (optional, can be derived from failed_subjects + programming subjects)
+        //    For simplicity, we'll skip here.
+
+        return [
+            'overall_gwa'               => $overallGWA,
+            'domain_gwa'                => $domainGWA,
+            'programming_gpa'           => $programmingGPA,
+            'course_completion_ratio'   => $completionRatio,
+            'failed_subject_count'      => $failedSubjectCount,
+            'gpa_trend_slope'           => $gpaTrend['slope'],
+            'gpa_trend_direction'       => $gpaTrend['direction'],
+            'has_probation'             => $hasProbation,
+            // Include raw term data if needed
+            'term_gpas'                  => $gpaTrend['term_gpas'],
+        ];
+    }
+
+    /**
+     * Determine if a subject is a programming/core IT subject.
+     *
+     * @param string $code
+     * @param string $name
+     * @param array $keywords
+     * @return bool
+     */
+    private function isProgrammingSubject($code, $name, $keywords)
+    {
+        // Only consider IT subjects (not NET, etc.)
+        if (!preg_match('/^IT/i', $code)) {
+            return false;
+        }
+        $lowerName = strtolower($name);
+        foreach ($keywords as $keyword) {
+            if (strpos($lowerName, strtolower($keyword)) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Compute GPA trend from term data.
+     *
+     * @param array $termData Keyed by 'year|semOrder', each with sumGradePoints, sumUnits, year, sem, order
+     * @return array ['slope' => float|null, 'direction' => string, 'term_gpas' => array]
+     */
+    private function computeGpaTrend($termData)
+    {
+        if (empty($termData)) {
+            return ['slope' => null, 'direction' => 'unknown', 'term_gpas' => []];
+        }
+
+        // Sort terms chronologically: first by year, then by sem order
+        uasort($termData, function($a, $b) {
+            if ($a['year'] != $b['year']) {
+                return $a['year'] <=> $b['year'];
+            }
+            return $a['order'] <=> $b['order'];
+        });
+
+        $termGpas = [];
+        $indices = [];
+        $gpas = [];
+        $index = 0;
+        foreach ($termData as $key => $term) {
+            $gwa = $term['sumGradePoints'] / $term['sumUnits'];
+            $termGpas[] = [
+                'year' => $term['year'],
+                'sem' => $term['sem'],
+                'gwa' => $gwa
+            ];
+            $indices[] = $index;
+            $gpas[] = $gwa;
+            $index++;
+        }
+
+        // If only one term, trend is flat
+        if (count($gpas) < 2) {
+            return [
+                'slope' => 0,
+                'direction' => 'stable',
+                'term_gpas' => $termGpas
+            ];
+        }
+
+        // Linear regression to compute slope
+        $n = count($gpas);
+        $sumX = array_sum($indices);
+        $sumY = array_sum($gpas);
+        $sumXY = 0;
+        $sumX2 = 0;
+        for ($i = 0; $i < $n; $i++) {
+            $sumXY += $indices[$i] * $gpas[$i];
+            $sumX2 += $indices[$i] * $indices[$i];
+        }
+        $denom = $n * $sumX2 - $sumX * $sumX;
+        $slope = ($denom != 0) ? ($n * $sumXY - $sumX * $sumY) / $denom : 0;
+
+        // Direction: if slope > 0, GWA increasing (worsening); if slope < 0, improving
+        $direction = 'stable';
+        if ($slope > 0.05) {
+            $direction = 'declining';
+        } elseif ($slope < -0.05) {
+            $direction = 'improving';
+        }
+
+        return [
+            'slope' => $slope,
+            'direction' => $direction,
+            'term_gpas' => $termGpas
+        ];
+    }
+
     public function dashboard(Request $request)
     {
         if (!Auth::guard('student')->check()) {
@@ -827,7 +1064,9 @@ class StudentController extends Controller
 
         // total failed attempts (e.g., failing a subject twice counts as 2)
         $count_failed_subjects = FailedSubject::where('student_id', $student->id)->sum('how_many');
-                
+
+        // Random Forest:
+        $features = $this->computeStudentRiskFeatures($student->id);
 
         return view('student.dashboard', compact(
             'user', 
@@ -858,7 +1097,8 @@ class StudentController extends Controller
             'probation',
             'incompleteGrades',
             'allEnrolledSubjects',
-            'count_failed_subjects'
+            'count_failed_subjects',
+            'features'
         ));
 
     }
@@ -1614,6 +1854,9 @@ class StudentController extends Controller
                 $units = $subjectDetail->units ?: 3; // default to 3 if not set
                 $subjectSemester = $subjectDetail->semester; // '1st Sem', '2nd Sem', or 'Summer'
 
+                // Current Year
+                $currentYear = date('Y');
+
                 // Determine school year based on subject's semester
                 $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
 
@@ -1626,7 +1869,7 @@ class StudentController extends Controller
                     'subject_id' => $subject['subject_id'],
                     'grade'      => $subject['grade'],
                     'sem'        => $subjectSemester,  // from the subject table
-                    'sy'         => $schoolYear
+                    'year'         => $currentYear
                 ]);
 
                 // Accumulate GWA data
@@ -1638,7 +1881,7 @@ class StudentController extends Controller
                     'grade'      => $subject['grade'],
                     'units'      => $units,
                     'semester'   => $subjectSemester,
-                    'school_year' => $schoolYear
+                    'year' => $currentYear
                 ];
             }
 
@@ -1709,6 +1952,7 @@ class StudentController extends Controller
                 }
         }
     }
+    
 
     // Helper method to convert letter grades to numeric
     private function convertGradeToNumeric($grade)

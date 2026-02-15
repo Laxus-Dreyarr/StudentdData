@@ -1,4 +1,5 @@
 <?php
+
 $studentname = $user->user_information->lastname . ' ' . $user->user_information->firstname;
 $lastname = $user->user_information->lastname;
 $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . substr($user->user_information->lastname, 0, 1));
