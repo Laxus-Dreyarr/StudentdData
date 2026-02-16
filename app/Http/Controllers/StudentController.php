@@ -1869,7 +1869,7 @@ class StudentController extends Controller
                     'subject_id' => $subject['subject_id'],
                     'grade'      => $subject['grade'],
                     'sem'        => $subjectSemester,  // from the subject table
-                    'year'         => $currentYear
+                    'year'         => $schoolYear
                 ]);
 
                 // Accumulate GWA data
@@ -1881,7 +1881,7 @@ class StudentController extends Controller
                     'grade'      => $subject['grade'],
                     'units'      => $units,
                     'semester'   => $subjectSemester,
-                    'year' => $currentYear
+                    'year' => $schoolYear
                 ];
             }
 
