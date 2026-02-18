@@ -234,6 +234,27 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     @endif
                                 </div>
                             </div>
+
+                            <div class="welcome-stat">
+                                <div class="stat-icon">
+                                    <i class="fas fa-laptop-code"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>
+                                        @if($hasEnrolledSubjects && isset($currentYearGWA))
+                                            {{ $features['gpa_trend_direction'] ?? 'unknown' }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </h3>
+                                    <p>GPA Trend</p>
+                                    @if($hasEnrolledSubjects && isset($gwa) && $gwa > 0)
+                                        <!-- <small class="text-muted" style="font-size: 0.8rem; display: block; margin-top: 5px;">
+                                            Overall: {{ number_format($gwa, 2) }}
+                                        </small> -->
+                                    @endif
+                                </div>
+                            </div>
                             
                             <div class="welcome-stat">
                                 <div class="stat-icon">
