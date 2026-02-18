@@ -1266,18 +1266,35 @@ class StudentController extends Controller
             
             // Handle added subjects and grades
             if ($request->has('added_subjects') && count($request->added_subjects) > 0) {
+                $currentYear = date('Y');
+                $currentMonth = date('n'); // 1-12
+
                 foreach ($request->added_subjects as $subject_id) {
                     // Check if already enrolled
                     $alreadyEnrolled = EnrolledSubjects::where('student_id', $student->id)
                         ->where('subject_id', $subject_id)
                         ->exists();
-                        
+
                     if (!$alreadyEnrolled) {
-                        // Insert new enrollment
+                        // Get subject details to retrieve its semester
+                        $subjectDetail = Subject::find($subject_id);
+                        if (!$subjectDetail) {
+                            // Skip if subject doesn't exist (optional: log or return error)
+                            continue;
+                        }
+
+                        $subjectSemester = $subjectDetail->semester; // e.g., '1st Sem', '2nd Sem', 'Summer'
+
+                        // Determine school year based on subject's semester and current date
+                        $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
+
+                        // Insert new enrollment with sem and year
                         EnrolledSubjects::create([
                             'student_id' => $student->id,
                             'subject_id' => $subject_id,
-                            'grade' => null // Grade will be set later by instructor
+                            'grade'      => null, // Grade will be set later by instructor
+                            'sem'        => $subjectSemester,
+                            'year'       => $schoolYear,
                         ]);
                     }
                 }
