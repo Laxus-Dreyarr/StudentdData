@@ -16,3 +16,4 @@
 .env
 /sql_file
 /public/js/psgc
+/venv
