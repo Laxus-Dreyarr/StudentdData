@@ -2019,18 +2019,18 @@ class StudentController extends Controller
     // helper method to get grade color class for badges
     private function getGradeColorClass($numericGrade)
     {
-    if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
-        return 'grade-excellent'; // Green
-    } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
-        return 'grade-good'; // Blue
-    } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
-        return 'grade-passing'; // Yellow
-    } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
-        return 'grade-failing'; // Red
-    } else {
-        return 'grade-special'; // Gray
+        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+            return 'grade-excellent'; // Green
+        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
+            return 'grade-good'; // Blue
+        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+            return 'grade-passing'; // Yellow
+        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+            return 'grade-failing'; // Red
+        } else {
+            return 'grade-special'; // Gray
+        }
     }
-}
 
     // Determine academic standing
     private function getAcademicStanding($gwa)
