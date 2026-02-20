@@ -1068,6 +1068,36 @@ class StudentController extends Controller
         // Random Forest:
         $features = $this->computeStudentRiskFeatures($student->id);
 
+        // This code is for Python Random Forest
+        // Initialize prediction variables
+        $prediction = null;
+        $predictionError = null;
+
+        // Only call the API if features are available and there's no error
+        if (!isset($features['error'])) {
+            try {
+                $response = Http::timeout(5)->post('http://127.0.0.1:8001/predict', [
+                    'overall_gwa'               => $features['overall_gwa'] ?? 0,
+                    'domain_gwa'                => $features['domain_gwa'] ?? 0,
+                    'programming_gpa'           => $features['programming_gpa'] ?? 0,
+                    'course_completion_ratio'   => $features['course_completion_ratio'] ?? 0,
+                    'failed_subject_count'      => $features['failed_subject_count'] ?? 0,
+                    'gpa_trend_slope'           => $features['gpa_trend_slope'] ?? 0,
+                    'has_probation'             => $features['has_probation'] ?? false,
+                ]);
+
+                if ($response->successful()) {
+                    $prediction = $response->json();
+                } else {
+                    $predictionError = 'API returned status: ' . $response->status();
+                    Log::warning('Python API error: ' . $response->body());
+                }
+            } catch (\Exception $e) {
+                $predictionError = 'Could not connect to prediction service.';
+                Log::error('Failed to call Python API: ' . $e->getMessage());
+            }
+        }
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -1098,7 +1128,9 @@ class StudentController extends Controller
             'incompleteGrades',
             'allEnrolledSubjects',
             'count_failed_subjects',
-            'features'
+            'features',
+            'prediction',
+            'predictionError'
         ));
 
     }

@@ -1,56 +1,35 @@
 import pandas as pd
 import numpy as np
-import pymysql
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-# Database connection (adjust credentials)
-conn = pymysql.connect(
-    host='127.0.0.1',
-    user='root',
-    password='',
-    database='student_data',
-    charset='utf8mb4'
-)
+# Load the exported CSV
+# df = pd.read_csv('storage/app/public/train/student_features.csv')  # adjust path
+df = pd.read_csv('../../storage/app/public/train/student_features.csv')
 
-# Query to get all students and their features
-# You'll need to write a complex query joining students, enrolled_subjects, etc.
-# For demonstration, we'll assume a view or a pre‑computed table exists.
-# In practice, replicate your computeStudentRiskFeatures logic in SQL.
-
-query = """
-    SELECT 
-        s.id AS student_id,
-        AVG(CASE WHEN sub.code LIKE 'IT%' OR sub.code LIKE 'NET%' THEN es.grade ELSE NULL END) AS domain_gwa,
-        COUNT(CASE WHEN es.grade > 3.0 THEN 1 END) AS failed_count,
-        ... 
-    FROM students s
-    LEFT JOIN enrolled_subjects es ON s.id = es.student_id
-    LEFT JOIN subjects sub ON es.subject_id = sub.id
-    GROUP BY s.id
-"""
-df = pd.read_sql(query, conn)
-conn.close()
-
-# Define target: e.g., 1 if student has ever been on probation or failed > 2 subjects
-df['at_risk'] = ((df['failed_count'] > 2) | (df['probation_flag'] == 1)).astype(int)
-
-# Feature columns (adjust to your actual columns)
-feature_cols = ['overall_gwa', 'domain_gwa', 'programming_gpa', 'completion_ratio',
-                'failed_subject_count', 'gpa_trend_slope', 'has_probation']
+# Features and target
+feature_cols = [
+    'overall_gwa',
+    'domain_gwa',
+    'programming_gpa',
+    'course_completion_ratio',
+    'failed_subject_count',
+    'gpa_trend_slope',
+    'has_probation'
+]
 X = df[feature_cols]
 y = df['at_risk']
 
-# Handle missing values
+# Handle missing values (e.g., students with no grades yet)
 X = X.fillna(X.mean())
 
 # Train/test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Scale features (important for some models, though tree‑based may not need it)
+# Scale features
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)

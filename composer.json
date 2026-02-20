@@ -8,11 +8,12 @@
         "php": "^7.3|^8.0",
         "barryvdh/laravel-dompdf": "^2.2",
         "fruitcake/laravel-cors": "^2.0",
-        "guzzlehttp/guzzle": "^7.0.1",
+        "guzzlehttp/guzzle": "^7.9",
         "jenssegers/agent": "^2.6",
         "laravel/framework": "^8.75",
         "laravel/sanctum": "^2.15",
         "laravel/tinker": "^2.5",
+        "league/csv": "^9.28",
         "nesbot/carbon": "^2.73",
         "php-open-source-saver/jwt-auth": "^2.2",
         "tijsverkoyen/css-to-inline-styles": "^2.3"

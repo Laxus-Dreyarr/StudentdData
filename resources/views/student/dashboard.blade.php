@@ -271,6 +271,48 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                 </div>
                             </div>
 
+                            <!--  -->
+                            @if(isset($prediction))
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5>🎓 Academic Risk Prediction</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <strong>Random Forest Risk:</strong>
+                                                <span class="badge {{ $prediction['rf_risk_probability'] > 0.5 ? 'bg-danger' : 'bg-success' }}">
+                                                    {{ round($prediction['rf_risk_probability'] * 100, 2) }}%
+                                                </span>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>XGBoost Risk:</strong>
+                                                <span class="badge {{ $prediction['xgb_risk_probability'] > 0.5 ? 'bg-danger' : 'bg-success' }}">
+                                                    {{ round($prediction['xgb_risk_probability'] * 100, 2) }}%
+                                                </span>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Combined Risk:</strong>
+                                                <span class="badge {{ $prediction['combined_risk_probability'] > 0.5 ? 'bg-danger' : 'bg-success' }}">
+                                                    {{ round($prediction['combined_risk_probability'] * 100, 2) }}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <strong>Risk Level:</strong>
+                                            <span class="badge {{ $prediction['risk_level'] == 'high' ? 'bg-danger' : 'bg-success' }}">
+                                                {{ ucfirst($prediction['risk_level']) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @elseif(isset($predictionError))
+                                <div class="alert alert-warning">
+                                    ⚠️ Prediction service temporarily unavailable: {{ $predictionError }}
+                                </div>
+                            @endif
+                            <!--  -->
+
                             <div class="welcome-stat">
                                 <div class="stat-icon">
                                     <i class="fas fa-exclamation-circle"></i>
