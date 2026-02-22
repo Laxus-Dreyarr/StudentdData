@@ -277,7 +277,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                     <div class="card-header bg-primary text-white">
                                         <h5>🎓 Academic Risk Prediction</h5>
                                     </div>
-                                    <div class="card-body">
+                                    <div class="card-body" style="color: black;">
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <strong>Random Forest Risk:</strong>
