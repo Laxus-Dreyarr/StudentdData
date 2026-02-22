@@ -60,7 +60,18 @@ class ExportStudentFeatures extends Command
 
             // Define the target variable "at_risk"
             // Example logic: at_risk = 1 if failed > 2 subjects OR on probation
-            $atRisk = ($features['failed_subject_count'] > 2 || $features['has_probation']) ? 1 : 0;
+            // $atRisk = ($features['failed_subject_count'] > 2 || $features['has_probation']) ? 1 : 0;
+
+            //NEW
+            // At‑risk if:
+            // - failed at least 1 subject, OR
+            // - on probation, OR
+            // - overall GWA is poor (e.g., > 3.0) – in PH grading, lower is better, so >3.0 is low performance
+            $atRisk = (
+                $features['failed_subject_count'] > 0 || 
+                $features['has_probation'] || 
+                ($features['overall_gwa'] !== null && $features['overall_gwa'] > 3.0)
+            ) ? 1 : 0;
 
             // Prepare row in the same order as header
             $row = [
@@ -86,3 +97,5 @@ class ExportStudentFeatures extends Command
         return 0;
     }
 }
+
+#php artisan students:export-features
