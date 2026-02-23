@@ -99,3 +99,4 @@ class ExportStudentFeatures extends Command
 }
 
 #php artisan students:export-features
+#python train_models.py
