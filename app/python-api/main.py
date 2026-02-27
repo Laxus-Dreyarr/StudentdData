@@ -84,20 +84,15 @@ async def predict_risk(features: StudentFeatures):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ------------------------------------------------------------------
-@app.post("/retrain")
-async def retrain(data: TrainingData):
-    """Receive JSON training data, retrain models, and update globals."""
+from fastapi import BackgroundTasks
+
+def process_training(students_data):
     global rf_model, xgb_model, scaler
-
-    # Use a lock to prevent concurrent retraining
-    if not retrain_lock.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="Retraining already in progress")
-
     try:
-        logger.info("Received retraining request with %d students", len(data.students))
+        logger.info("Received retraining request with %d students", len(students_data))
 
         # Convert JSON to DataFrame
-        df = pd.DataFrame(data.students)
+        df = pd.DataFrame(students_data)
         # The DataFrame must contain feature columns + 'at_risk'
         feature_cols = [
             'overall_gwa', 'domain_gwa', 'programming_gpa',
@@ -135,13 +130,21 @@ async def retrain(data: TrainingData):
         scaler = new_scaler
 
         logger.info("Retraining completed successfully.")
-        return {"message": "Models retrained and updated."}
-
     except Exception as e:
         logger.exception("Retraining failed")
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         retrain_lock.release()
+
+@app.post("/retrain")
+async def retrain(data: TrainingData, background_tasks: BackgroundTasks):
+    """Receive JSON training data and train models in the background."""
+    # Use a lock to prevent concurrent retraining
+    if not retrain_lock.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="Retraining already in progress")
+
+    # Pass the training task to the background
+    background_tasks.add_task(process_training, data.students)
+    return {"message": "Models are being retrained in the background."}
 
 # ------------------------------------------------------------------
 @app.get("/health")
