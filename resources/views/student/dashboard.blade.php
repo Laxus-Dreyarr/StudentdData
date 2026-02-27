@@ -304,6 +304,17 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                                 {{ ucfirst($prediction['risk_level']) }}
                                             </span>
                                         </div>
+
+                                        @if(isset($explanations) && count($explanations) > 0)
+                                            <div class="mt-3">
+                                                <strong>Risk Factors / Observations:</strong>
+                                                <ul class="mb-0 mt-2">
+                                                    @foreach($explanations as $msg)
+                                                        <li>{{ $msg }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             @elseif(isset($predictionError))

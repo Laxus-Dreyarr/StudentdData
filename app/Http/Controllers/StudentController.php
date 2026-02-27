@@ -1099,6 +1099,43 @@ class StudentController extends Controller
             }
         }
 
+        // Generate explanations based on features
+        $explanations = [];
+        $overallGpa = $features['overall_gwa'] ?? null;
+        $programmingGpa = $features['programming_gpa'] ?? null;
+        $failedProg = $features['failed_subject_count'] ?? 0;
+        $gpaTrend = $features['gpa_trend_slope'] ?? 0;
+        $completionRatio = $features['course_completion_ratio'] ?? null;
+        $probationFlag = $features['has_probation'] ?? 0;
+
+        if ($overallGpa !== null && $overallGpa < 0.50) {
+            $explanations[] = "Low overall GPA based on entered grades.";
+        }
+
+        if ($programmingGpa !== null && $programmingGpa < 0.50) {
+            $explanations[] = "Weak performance in core IT / programming subjects.";
+        }
+
+        if ($failedProg > 0.40) {
+            $explanations[] = "Multiple failed IT core or programming subjects.";
+        }
+
+        if ($gpaTrend < 0) {
+            $explanations[] = "Declining academic performance trend.";
+        }
+
+        if ($completionRatio !== null && $completionRatio < 0.70) {
+            $explanations[] = "Low subject completion ratio this term.";
+        }
+
+        if ($probationFlag == 1) {
+            $explanations[] = "GPA level indicates academic probation risk.";
+        }
+
+        if (empty($explanations)) {
+            $explanations[] = "No significant academic risk factors detected.";
+        }
+
         return view('student.dashboard', compact(
             'user', 
             'pageTitle',
@@ -1131,7 +1168,8 @@ class StudentController extends Controller
             'count_failed_subjects',
             'features',
             'prediction',
-            'predictionError'
+            'predictionError',
+            'explanations'
         ));
 
     }
