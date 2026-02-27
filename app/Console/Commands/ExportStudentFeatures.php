@@ -98,5 +98,6 @@ class ExportStudentFeatures extends Command
     }
 }
 
+#Recent but now no need to use this command, since we are now sending data directly to the Python API instead of exporting to CSV. However, this command can still be useful for debugging or if you want to have a local copy of the features.
 #php artisan students:export-features
 #python train_models.py

@@ -33,6 +33,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use DateTime;
+use App\Jobs\RetrainModelsJob;
 
 class StudentController extends Controller
 {
@@ -1231,6 +1232,9 @@ class StudentController extends Controller
                         // Add any other required fields
                     ]);
                 }
+
+                // 🚀 Dispatch retraining job
+                RetrainModelsJob::dispatch();
                 
                 return response()->json([
                     'success' => true,
@@ -1406,6 +1410,9 @@ class StudentController extends Controller
             $student->save();
             
             DB::commit();
+
+            // 🚀 Dispatch retraining job
+            RetrainModelsJob::dispatch();
             
             return response()->json([
                 'message' => 'Subjects updated successfully',
@@ -1505,6 +1512,9 @@ class StudentController extends Controller
             }
 
             DB::commit();
+
+            // 🚀 Dispatch retraining job
+            RetrainModelsJob::dispatch();
 
             return response()->json([
                 'message' => 'Grade updated successfully',
@@ -1941,6 +1951,8 @@ class StudentController extends Controller
             $student->status = 'Officially Enrolled';
             $student->enrolled = 1;
             $student->save();
+
+            RetrainModelsJob::dispatch();
 
             return response()->json([
                 'success'          => true,
