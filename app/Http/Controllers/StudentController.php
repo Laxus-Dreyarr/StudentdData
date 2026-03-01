@@ -686,6 +686,21 @@ class StudentController extends Controller
         // 6. Failed subject count (from failed_subjects table)
         $failedSubjectCount = FailedSubject::where('student_id', $studentId)->sum('how_many');
 
+        // Count programming‑specific failures
+        $programmingFailures = 0;
+        $failedRecords = FailedSubject::where('student_id', $studentId)
+            ->with('subject')
+            ->get();
+        foreach ($failedRecords as $failed) {
+            $subject = $failed->subject;
+            if (!$subject) continue;
+            $code = $subject->code ?? '';
+            $name = $subject->name ?? '';
+            if ($this->isProgrammingSubject($code, $name, $programmingKeywords)) {
+                $programmingFailures += intval($failed->how_many);
+            }
+        }
+
         // 7. GPA trend over time
         $gpaTrend = $this->computeGpaTrend($termData);
 
@@ -701,6 +716,7 @@ class StudentController extends Controller
             'programming_gpa'           => $programmingGPA,
             'course_completion_ratio'   => $completionRatio,
             'failed_subject_count'      => $failedSubjectCount,
+            'programming_failures'      => $programmingFailures,
             'gpa_trend_slope'           => $gpaTrend['slope'],
             'gpa_trend_direction'       => $gpaTrend['direction'],
             'has_probation'             => $hasProbation,
@@ -1103,24 +1119,29 @@ class StudentController extends Controller
         $explanations = [];
         $overallGpa = $features['overall_gwa'] ?? null;
         $programmingGpa = $features['programming_gpa'] ?? null;
-        $failedProg = $features['failed_subject_count'] ?? 0;
+        $totalFailures = $features['failed_subject_count'] ?? 0;
+        $progFailures = $features['programming_failures'] ?? 0;
         $gpaTrend = $features['gpa_trend_slope'] ?? 0;
         $completionRatio = $features['course_completion_ratio'] ?? null;
         $probationFlag = $features['has_probation'] ?? 0;
 
-        if ($overallGpa !== null && $overallGpa < 0.50) {
-            $explanations[] = "Low overall GPA based on entered grades.";
+        if ($overallGpa !== null && $overallGpa > 3.0) {  // adjust threshold as needed
+            $explanations[] = "Overall GWA indicates academic difficulty.";
         }
 
-        if ($programmingGpa !== null && $programmingGpa < 0.50) {
+        if ($programmingGpa !== null && $programmingGpa > 3.0) {
             $explanations[] = "Weak performance in core IT / programming subjects.";
         }
 
-        if ($failedProg > 0.40) {
-            $explanations[] = "Multiple failed IT core or programming subjects.";
+        if ($progFailures > 0) {
+            $explanations[] = $progFailures == 1
+                ? "Failed a core IT / programming subject."
+                : "Multiple failed IT core or programming subjects.";
+        } elseif ($totalFailures > 0) {
+            $explanations[] = "Failed subject(s) in non‑core areas – still a risk factor.";
         }
 
-        if ($gpaTrend < 0) {
+        if ($gpaTrend > 0.05) {
             $explanations[] = "Declining academic performance trend.";
         }
 
@@ -1128,8 +1149,8 @@ class StudentController extends Controller
             $explanations[] = "Low subject completion ratio this term.";
         }
 
-        if ($probationFlag == 1) {
-            $explanations[] = "GPA level indicates academic probation risk.";
+        if ($probationFlag) {
+            $explanations[] = "Student is on academic probation.";
         }
 
         if (empty($explanations)) {
@@ -1192,41 +1213,6 @@ class StudentController extends Controller
         }
     }
 
-    // public function updateSubjectGrade(Request $request)
-    // {
-    //     $user = $request->user();
-    //     $student = Student::where('student_id', $user->id)->first();
-        
-    //     if (!$student) {
-    //         return response()->json(['error' => 'Student not found'], 404);
-    //     }
-        
-    //     $validated = $request->validate([
-    //         'subject_id' => 'required|integer|exists:subjects,id',
-    //         'grade' => 'required|string|in:1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,4.0,5.0,INC,DRP,PASS,FAIL'
-    //     ]);
-        
-    //     try {
-    //         // Update the grade
-    //         $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
-    //             ->where('subject_id', $validated['subject_id'])
-    //             ->first();
-            
-    //         if ($enrolledSubject) {
-    //             $enrolledSubject->grade = $validated['grade'];
-    //             $enrolledSubject->save();
-                
-    //             return response()->json([
-    //                 'success' => true,
-    //                 'message' => 'Grade updated successfully'
-    //             ]);
-    //         } else {
-    //             return response()->json(['error' => 'Subject not enrolled'], 404);
-    //         }
-    //     } catch (\Exception $e) {
-    //         return response()->json(['error' => 'Failed to update grade'], 500);
-    //     }
-    // }
 
     public function updateSubjectGrade(Request $request)
     {
