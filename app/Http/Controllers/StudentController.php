@@ -1553,33 +1553,6 @@ class StudentController extends Controller
         }
     }
 
-    // private function cleanupWarningsAndProbation($student_id)
-    // {
-    //     // This method should only remove probation when student has only 2 failed subjects
-    //     // and downgrade warnings if needed, but updateStudentWarnings already handles that
-    //     // So we can simplify or remove this method
-
-        
-    //     // Get current failed subjects count
-    //     $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
-    //     $distinctFailedSubjects = $failedSubjects->count();
-        
-    //     // Remove probation only if student has 2 or fewer distinct failed subjects
-    //     // AND doesn't have a Final Warning
-    //     if ($distinctFailedSubjects <= 2) {
-    //         $hasFinalWarning = StudentWarning::where('student_id', $student_id)
-    //             ->where('warning_type', 'Final Warning')
-    //             ->where('status', 'Active')
-    //             ->exists();
-                
-    //         if (!$hasFinalWarning) {
-    //             StudentProbation::where('student_id', $student_id)
-    //                 ->where('status', 'Active')
-    //                 ->delete();
-    //         }
-    //     }
-    // }
-
     private function cleanupWarningsAndProbation($student_id)
     {
         // Get current failed subjects count
@@ -1624,28 +1597,7 @@ class StudentController extends Controller
         }
     }
 
-    // private function handleFailedGrade($student_id, $subject_id)
-    // {
-    //     // Check if failed subject already exists
-    //     $failedSubject = FailedSubject::where([
-    //         ['student_id', $student_id],
-    //         ['subject_id', $subject_id]
-    //     ])->first();
-            
-    //     if ($failedSubject) {
-    //         // Increment failure count
-    //         $newCount = intval($failedSubject->how_many) + 1;
-    //         $failedSubject->how_many = (string)$newCount;
-    //         $failedSubject->save();
-    //     } else {
-    //         // Create new failed subject record
-    //         FailedSubject::create([
-    //             'student_id' => $student_id,
-    //             'subject_id' => $subject_id,
-    //             'how_many' => '1'
-    //         ]);
-    //     }
-    // }
+
     private function handleFailedGrade($student_id, $subject_id)
     {
         // Always insert a new record for each failing grade
@@ -2115,6 +2067,60 @@ class StudentController extends Controller
             return 'On Probation';
         }
     }
+
+
+
+    // private function handleFailedGrade($student_id, $subject_id)
+    // {
+    //     // Check if failed subject already exists
+    //     $failedSubject = FailedSubject::where([
+    //         ['student_id', $student_id],
+    //         ['subject_id', $subject_id]
+    //     ])->first();
+            
+    //     if ($failedSubject) {
+    //         // Increment failure count
+    //         $newCount = intval($failedSubject->how_many) + 1;
+    //         $failedSubject->how_many = (string)$newCount;
+    //         $failedSubject->save();
+    //     } else {
+    //         // Create new failed subject record
+    //         FailedSubject::create([
+    //             'student_id' => $student_id,
+    //             'subject_id' => $subject_id,
+    //             'how_many' => '1'
+    //         ]);
+    //     }
+    // }
+
+
+    // private function cleanupWarningsAndProbation($student_id)
+    // {
+    //     // This method should only remove probation when student has only 2 failed subjects
+    //     // and downgrade warnings if needed, but updateStudentWarnings already handles that
+    //     // So we can simplify or remove this method
+
+        
+    //     // Get current failed subjects count
+    //     $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
+    //     $distinctFailedSubjects = $failedSubjects->count();
+        
+    //     // Remove probation only if student has 2 or fewer distinct failed subjects
+    //     // AND doesn't have a Final Warning
+    //     if ($distinctFailedSubjects <= 2) {
+    //         $hasFinalWarning = StudentWarning::where('student_id', $student_id)
+    //             ->where('warning_type', 'Final Warning')
+    //             ->where('status', 'Active')
+    //             ->exists();
+                
+    //         if (!$hasFinalWarning) {
+    //             StudentProbation::where('student_id', $student_id)
+    //                 ->where('status', 'Active')
+    //                 ->delete();
+    //         }
+    //     }
+    // }
+
 
     /**
      * Get authenticated user

@@ -1836,6 +1836,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <p class="mb-2">© 2026 Eastern Visayas State University - Ormoc Campus. All rights reserved.</p>
         </div>
     </footer>
+    
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
