@@ -274,11 +274,11 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             <!--  -->
                             @if(isset($prediction))
                                 <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
+                                    <div style="display: none;" class="card-header bg-primary text-white">
                                         <h5>🎓 Academic Risk Prediction</h5>
                                     </div>
                                     <div class="card-body" style="color: black;">
-                                        <div class="row">
+                                        <div class="row" style="display: none;">
                                             <div class="col-md-4">
                                                 <strong>Random Forest Risk:</strong>
                                                 <span class="badge {{ $prediction['rf_risk_probability'] > 0.5 ? 'bg-danger' : 'bg-success' }}">
@@ -1007,200 +1007,90 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <section id="grades-content" class="content-section">
                 <div class="section-header">
                     <h2 class="section-title">Grades</h2>
-                    <!-- <h2 class="section-title">Grades & Transcript</h2>
-                    @if($hasEnrolledSubjects)
-                        <button class="btn-primary" id="downloadTranscript">
-                            <i class="fas fa-download"></i> Download Transcript
-                        </button>
-                    @endif -->
                 </div>
-                
+
                 @if($hasEnrolledSubjects)
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Academic Grades</h5>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-success me-2">Passing: 1.0-3.0</span>
-                                <span class="badge bg-danger">Failing: 4.0-5.0</span>
+                    @php $index = 0; @endphp
+                    @foreach($groupedGrades as $period => $data)
+                        @php
+                            [$year, $sem] = explode('|', $period);
+                            $subjects = $data->subjects;
+                            $periodGWA = $data->periodGWA;
+                            $periodUnits = $data->periodUnits;
+                            $chartData = $data->chartData; // contains semester_gpa and overall_gpa
+                            $barChartId = 'semester-bar-' . $index;
+                            $lineChartId = 'semester-line-' . $index;
+                        @endphp
+                        <div class="dashboard-card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    Academic Year {{ $year }} – {{ $sem }}
+                                </h5>
+                                <div>
+                                    <span class="badge bg-primary">{{ $subjects->count() }} subjects</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="grade-table">
-                                <thead>
-                                    <tr>
-                                        <th width="15%">Code</th>
-                                        <th width="40%">Subject Name</th>
-                                        <th width="15%">Units</th>
-                                        <th width="15%">Grade</th>
-                                        <th width="15%">Equivalent</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if(count($gradesTableData) > 0)
-                                        @foreach($gradesTableData as $grade)
+
+                            <!-- First chart: Bar (Semester GPA vs Overall GPA) -->
+                            <div id="{{ $barChartId }}" style="width: 100%; height: 150px; margin-bottom: 20px;"></div>
+
+                            <!-- Second chart: Line (Grades of individual subjects in this semester) -->
+                            <div id="{{ $lineChartId }}" style="width: 100%; height: 200px; margin-bottom: 20px;"></div>
+
+                            <div class="table-responsive">
+                                <table class="grade-table">
+                                    <thead>
                                         <tr>
-                                            <td>
-                                                <strong>{{ $grade['subject_code'] }}</strong>
-                                            </td>
-                                            <td>
-                                                <div class="subject-name">{{ $grade['subject_name'] }}</div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-light text-dark">{{ $grade['units'] }}</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="grade-value {{ $grade['color_class'] }}">
-                                                    {{ $grade['grade'] }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="grade-badge {{ $grade['color_class'] }}">
-                                                    {{ $grade['equivalent'] }}
-                                                </span>
-                                            </td>
+                                            <th width="15%">Code</th>
+                                            <th width="40%">Subject Name</th>
+                                            <th width="15%">Units</th>
+                                            <th width="15%">Grade</th>
+                                            <th width="15%">Equivalent</th>
                                         </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($subjects as $enrolled)
+                                            @php
+                                                $subject = $enrolled->subject;
+                                                $computed = $enrolled->computed;
+                                            @endphp
+                                            <tr>
+                                                <td><strong>{{ $subject->code }}</strong></td>
+                                                <td>{{ $subject->name }}</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-light text-dark">{{ $subject->units }}</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="grade-value {{ $computed->color_class }}">
+                                                        {{ $enrolled->grade ?? 'No Grade' }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="grade-badge {{ $computed->color_class }}">
+                                                        {{ $computed->equivalent }}
+                                                    </span>
+                                                </td>
+                                            </tr>
                                         @endforeach
-                                    @else
-                                        <tr>
-                                            <td colspan="5" class="text-center py-4">
-                                                <i class="fas fa-book fa-3x text-gray-300 mb-3"></i>
-                                                <h6 class="text-gray-500">No Grade Data Available</h6>
-                                                <p class="text-muted">You haven't enrolled in any subjects yet.</p>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-light">
+                                            <td colspan="2" class="text-end"><strong>Period Total:</strong></td>
+                                            <td class="text-center"><strong>{{ $periodUnits }}</strong></td>
+                                            <td class="text-center">
+                                                <strong>GWA: {{ number_format($periodGWA, 2) }}</strong>
                                             </td>
+                                            <td></td>
                                         </tr>
-                                    @endif
-                                </tbody>
-                                @if(count($gradesTableData) > 0)
-                                <tfoot>
-                                    <tr class="table-light">
-                                        <td colspan="2" class="text-end">
-                                            <strong>Total:</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>{{ $totalUnits }}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>GWA: {{ number_format($gwa, 2) }}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong>{{ $academicStanding }}</strong>
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                                @endif
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h5 class="card-title"><i class="fas fa-calculator"></i> GPA Summary</h5>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-filter"></i> Filter
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" data-filter="all">All Semesters</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filter="current">Current Year</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filter="previous">Previous Years</a></li>
-                                </ul>
+                                    </tfoot>
+                                </table>
                             </div>
                         </div>
-                        <div class="dashboard-grid" style="margin-bottom: 0;">
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--primary);">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ number_format($currentYearGWA, 2) }}</h3>
-                                        <p>Current Year GWA</p>
-                                        <small class="text-muted">{{ $currentYearSubjects }} subjects</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                                        <i class="fas fa-chart-bar"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ number_format($gwa, 2) }}</h3>
-                                        <p>Cumulative GWA</p>
-                                        <small class="text-muted">{{ $totalSubjects }} total subjects</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="welcome-stat">
-                                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">
-                                        <i class="fas fa-award"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <h3>{{ $academicStanding }}</h3>
-                                        <p>Academic Standing</p>
-                                        <small class="text-muted">
-                                            @if(strpos($academicStanding, 'Lister') !== false)
-                                                <i class="fas fa-star text-warning"></i> Excellent
-                                            @else
-                                                {{ $student->status }}
-                                            @endif
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {{-- Grade Distribution --}}
-                        @if(isset($gradeDistribution))
-                        <div class="mt-4">
-                            <h6 class="mb-3">Grade Distribution</h6>
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="progress" style="height: 20px;">
-                                        @php
-                                            $totalGrades = array_sum($gradeDistribution);
-                                            $excellentPercent = ($totalGrades > 0) ? ($gradeDistribution['excellent'] / $totalGrades) * 100 : 0;
-                                            $goodPercent = ($totalGrades > 0) ? ($gradeDistribution['good'] / $totalGrades) * 100 : 0;
-                                            $fairPercent = ($totalGrades > 0) ? ($gradeDistribution['fair'] / $totalGrades) * 100 : 0;
-                                            $passingPercent = ($totalGrades > 0) ? ($gradeDistribution['passing'] / $totalGrades) * 100 : 0;
-                                            $failingPercent = ($totalGrades > 0) ? ($gradeDistribution['failing'] / $totalGrades) * 100 : 0;
-                                        @endphp
-                                        <div class="progress-bar bg-success" style="width: {{ $excellentPercent }}%" 
-                                            title="Excellent (1.0-1.5): {{ $gradeDistribution['excellent'] }}"></div>
-                                        <div class="progress-bar bg-info" style="width: {{ $goodPercent }}%" 
-                                            title="Good (1.6-2.0): {{ $gradeDistribution['good'] }}"></div>
-                                        <div class="progress-bar bg-warning" style="width: {{ $fairPercent }}%" 
-                                            title="Fair (2.1-2.5): {{ $gradeDistribution['fair'] }}"></div>
-                                        <div class="progress-bar bg-secondary" style="width: {{ $passingPercent }}%" 
-                                            title="Passing (2.6-3.0): {{ $gradeDistribution['passing'] }}"></div>
-                                        <div class="progress-bar bg-danger" style="width: {{ $failingPercent }}%" 
-                                            title="Failing (4.0-5.0): {{ $gradeDistribution['failing'] }}"></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="text-end small">
-                                        <div class="mb-1">
-                                            <span class="badge bg-success">1.0-1.5:</span> {{ $gradeDistribution['excellent'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-info">1.6-2.0:</span> {{ $gradeDistribution['good'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-warning">2.1-2.5:</span> {{ $gradeDistribution['fair'] }}
-                                        </div>
-                                        <div class="mb-1">
-                                            <span class="badge bg-secondary">2.6-3.0:</span> {{ $gradeDistribution['passing'] }}
-                                        </div>
-                                        <div>
-                                            <span class="badge bg-danger">4.0-5.0:</span> {{ $gradeDistribution['failing'] }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-                    </div>
+                        @php $index++; @endphp
+                    @endforeach
+
+                    <!-- Optional: Overall summary card (you may already have it elsewhere) -->
                 @else
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -1836,7 +1726,7 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
             <p class="mb-2">© 2026 Eastern Visayas State University - Ormoc Campus. All rights reserved.</p>
         </div>
     </footer>
-    
+
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -1845,124 +1735,230 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
     <script src="{{asset('js/function/student/grade-update.js')}}"></script>
     <!-- Google Charts Loader -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-        google.charts.load('current', { packages: ['corechart'] });
-        google.charts.setOnLoadCallback(drawCharts);
+<!-- Google Charts Loader -->
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<!-- Google Charts Loader -->
+<script type="text/javascript">
+    google.charts.load('current', { packages: ['corechart'] });
+    google.charts.setOnLoadCallback(function() {
+        drawOverallCharts();
+        drawSemesterBarCharts();
+        drawSemesterLineCharts();
+    });
 
-        // Convert PHP arrays to JavaScript
-        const features = @json($features);
-        const termGpas = @json($features['term_gpas'] ?? []);
+    // Convert PHP arrays to JavaScript
+    const features = @json($features);
+    const termGpas = @json($features['term_gpas'] ?? []);
+    const semesters = @json($groupedGrades); // all semester data
 
-        function drawCharts() {
-            drawGPAChart();
-            drawCompletionChart();
-            drawTrendChart();
-        }
+    // ---------- Overall Charts (unchanged) ----------
+    function drawOverallCharts() {
+        drawGPAChart();
+        drawCompletionChart();
+        drawTrendChart();
+    }
 
-        // GPA Comparison Column Chart
-        function drawGPAChart() {
-            var data = google.visualization.arrayToDataTable([
+    function drawGPAChart() {
+        var data = google.visualization.arrayToDataTable([
+            ['Metric', 'GPA', { role: 'style' }],
+            ['Overall', Math.round((features.overall_gwa || 0) * 100) / 100, getColor(features.overall_gwa)],
+            ['Domain',  Math.round((features.domain_gwa || 0) * 100) / 100, getColor(features.domain_gwa)],
+            ['Programming', Math.round((features.programming_gpa || 0) * 100) / 100, getColor(features.programming_gpa)]
+        ]);
+
+        var options = {
+            title: 'GPA Comparison (1.0 = best)',
+            width: '100%',
+            height: 300,
+            bar: { groupWidth: '70%' },
+            legend: { position: 'none' },
+            vAxis: {
+                title: 'GPA',
+                format: '#.##',
+                minValue: 1.0,
+                maxValue: 5.0,
+                direction: -1,
+                viewWindow: { min: 1.0, max: 5.0 }
+            },
+            hAxis: { title: 'Metric' }
+        };
+
+        var chart = new google.visualization.ColumnChart(document.getElementById('gpa_chart'));
+        chart.draw(data, options);
+    }
+
+    function getColor(gpa) {
+        if (!gpa) return 'gray';
+        if (gpa <= 1.5) return 'green';
+        if (gpa <= 2.0) return '#90EE90'; // light green
+        if (gpa <= 3.0) return 'orange';
+        return 'red';
+    }
+
+    function drawCompletionChart() {
+        var completion = features.course_completion_ratio ? features.course_completion_ratio * 100 : 0;
+        var data = google.visualization.arrayToDataTable([
+            ['', 'Completion %', { role: 'style' }],
+            ['Completion', completion, 'blue']
+        ]);
+
+        var options = {
+            title: 'Course Completion Ratio',
+            width: '100%',
+            height: 120,
+            legend: { position: 'none' },
+            hAxis: {
+                minValue: 0,
+                maxValue: 100,
+                ticks: [0, 20, 40, 60, 80, 100],
+                title: 'Percent'
+            },
+            bars: 'horizontal'
+        };
+
+        var chart = new google.visualization.BarChart(document.getElementById('completion_chart'));
+        chart.draw(data, options);
+    }
+
+    function drawTrendChart() {
+        if (!termGpas || termGpas.length === 0) return;
+
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Term');
+        data.addColumn('number', 'GPA');
+
+        termGpas.forEach(function(term) {
+            data.addRow([term.year + ' ' + term.sem, term.gwa]);
+        });
+
+        var options = {
+            title: 'GPA Trend Over Terms',
+            width: '100%',
+            height: 300,
+            vAxis: {
+                direction: -1,
+                minValue: 1.0,
+                maxValue: 5.0,
+                title: 'GPA'
+            },
+            trendlines: {
+                0: {
+                    type: 'linear',
+                    color: 'red',
+                    lineWidth: 2,
+                    opacity: 0.5,
+                    visibleInLegend: true,
+                    labelInLegend: 'Trend (slope: {{ $features['gpa_trend_slope'] }})'
+                }
+            },
+            legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('trend_chart'));
+        chart.draw(data, options);
+    }
+
+    // ---------- Per‑Semester Bar Charts (Semester GPA vs Overall) ----------
+    function drawSemesterBarCharts() {
+        let index = 0;
+        for (let period in semesters) {
+            const data = semesters[period];
+            const chartId = 'semester-bar-' + index;
+            const chartDiv = document.getElementById(chartId);
+            if (!chartDiv) {
+                console.warn('Bar chart div not found:', chartId);
+                index++;
+                continue;
+            }
+
+            const chartData = google.visualization.arrayToDataTable([
                 ['Metric', 'GPA', { role: 'style' }],
-                ['Overall', Math.round((features.overall_gwa || 0) * 100) / 100, getColor(features.overall_gwa)],
-                ['Domain',  Math.round((features.domain_gwa || 0) * 100) / 100, getColor(features.domain_gwa)],
-                ['Programming', Math.round((features.programming_gpa || 0) * 100) / 100, getColor(features.programming_gpa)]
+                ['Semester GPA', data.chartData.semester_gpa, '#2563eb'],
+                ['Overall GPA',  data.chartData.overall_gpa,  '#94a3b8']
             ]);
 
-            var options = {
-                title: 'GPA Comparison (1.0 = best)',
+            const options = {
+                title: 'Semester GPA vs Overall',
                 width: '100%',
-                height: 300,
-                bar: { groupWidth: '70%' },
+                height: 150,
                 legend: { position: 'none' },
                 vAxis: {
-                    title: 'GPA',
-                    format: '#.##',          // <-- this formats the axis labels to two decimals
                     minValue: 1.0,
                     maxValue: 5.0,
                     direction: -1,
-                    viewWindow: { min: 1.0, max: 5.0 }
-                },
-                hAxis: { title: 'Metric' }
-            };
-
-            var chart = new google.visualization.ColumnChart(document.getElementById('gpa_chart'));
-            chart.draw(data, options);
-        }
-
-        // Helper for GPA colors
-        function getColor(gpa) {
-            if (!gpa) return 'gray';
-            if (gpa <= 1.5) return 'green';
-            if (gpa <= 2.0) return '#90EE90'; // light green
-            if (gpa <= 3.0) return 'orange';
-            return 'red';
-        }
-
-        // Course Completion Ratio (horizontal bar)
-        function drawCompletionChart() {
-            var completion = features.course_completion_ratio ? features.course_completion_ratio * 100 : 0;
-            var data = google.visualization.arrayToDataTable([
-                ['', 'Completion %', { role: 'style' }],
-                ['Completion', completion, 'blue']
-            ]);
-
-            var options = {
-                title: 'Course Completion Ratio',
-                width: '100%',
-                height: 120,
-                legend: { position: 'none' },
-                hAxis: {
-                    minValue: 0,
-                    maxValue: 100,
-                    ticks: [0, 20, 40, 60, 80, 100],
-                    title: 'Percent'
-                },
-                bars: 'horizontal'
-            };
-
-            var chart = new google.visualization.BarChart(document.getElementById('completion_chart'));
-            chart.draw(data, options);
-        }
-
-        // GPA Trend Line Chart
-        function drawTrendChart() {
-            if (!termGpas || termGpas.length === 0) return;
-
-            var data = new google.visualization.DataTable();
-            data.addColumn('string', 'Term');
-            data.addColumn('number', 'GPA');
-
-            termGpas.forEach(function(term) {
-                data.addRow([term.year + ' ' + term.sem, term.gwa]);
-            });
-
-            var options = {
-                title: 'GPA Trend Over Terms',
-                width: '100%',
-                height: 300,
-                vAxis: {
-                    direction: -1,
-                    minValue: 1.0,
-                    maxValue: 5.0,
                     title: 'GPA'
                 },
-                trendlines: {
-                    0: {
-                        type: 'linear',
-                        color: 'red',
-                        lineWidth: 2,
-                        opacity: 0.5,
-                        visibleInLegend: true,
-                        labelInLegend: 'Trend (slope: {{ $features['gpa_trend_slope'] }})'
-                    }
-                },
-                legend: { position: 'bottom' }
+                bar: { groupWidth: '70%' },
+                colors: ['#2563eb', '#94a3b8']
             };
 
-            var chart = new google.visualization.LineChart(document.getElementById('trend_chart'));
-            chart.draw(data, options);
+            const chart = new google.visualization.ColumnChart(chartDiv);
+            chart.draw(chartData, options);
+            index++;
         }
-    </script>
+    }
+
+    // ---------- Per‑Semester Line Charts (Subject Grades) ----------
+    function drawSemesterLineCharts() {
+        let index = 0;
+        for (let period in semesters) {
+            const semesterData = semesters[period];
+            const subjects = semesterData.subjects; // array of enrolled subjects with computed data
+            const chartId = 'semester-line-' + index;
+            const chartDiv = document.getElementById(chartId);
+            if (!chartDiv) {
+                console.warn('Line chart div not found:', chartId);
+                index++;
+                continue;
+            }
+
+            // Prepare data table: subject name (or code) and numeric grade
+            const dataTable = new google.visualization.DataTable();
+            dataTable.addColumn('string', 'Subject');
+            dataTable.addColumn('number', 'Grade');
+
+            subjects.forEach(function(enrolled) {
+                const subjectCode = enrolled.subject.code;
+                const numericGrade = enrolled.computed.numeric_grade;
+                // Only include subjects with a valid numeric grade (ignore INC/DRP)
+                if (numericGrade > 0) {
+                    dataTable.addRow([subjectCode, numericGrade]);
+                }
+            });
+
+            if (dataTable.getNumberOfRows() === 0) {
+                console.warn('No numeric grades for semester:', period);
+                index++;
+                continue;
+            }
+
+            const options = {
+                title: 'Subject Grades This Semester',
+                width: '100%',
+                height: 200,
+                legend: { position: 'none' },
+                vAxis: {
+                    minValue: 1.0,
+                    maxValue: 5.0,
+                    direction: -1,
+                    title: 'Grade'
+                },
+                hAxis: {
+                    title: 'Subject',
+                    slantedText: true,
+                    slantedTextAngle: 45
+                },
+                curveType: 'function', // smooth line
+                pointSize: 5,
+                colors: ['#f97316']
+            };
+
+            const chart = new google.visualization.LineChart(chartDiv);
+            chart.draw(dataTable, options);
+            index++;
+        }
+    }
+</script>
     <script>
         $(document).ready(function() {
             // Get data from the hidden div

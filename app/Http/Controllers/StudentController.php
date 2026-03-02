@@ -1076,1116 +1076,1173 @@ class StudentController extends Controller
                 return $subject->year_level . '|' . $subject->semester;
             });
 
-        // number of subjects the student has ever failed (unique)
-        // $count_failed_subjects = FailedSubject::where('student_id', $student->id)->count();
+        // Group enrolled subjects by actual enrollment year and semester for grades display
+        // Get overall GPA for reference (you already have $gwa)
+        $overallGPA = $gwa;
 
-        // total failed attempts (e.g., failing a subject twice counts as 2)
-        $count_failed_subjects = FailedSubject::where('student_id', $student->id)->sum('how_many');
+        $groupedGrades = EnrolledSubjects::where('student_id', $student->id)
+            ->with('subject')
+            ->get()
+            ->groupBy(function($enrolled) {
+                return $enrolled->year . '|' . $enrolled->sem;
+            })
+            ->sortBy(function($group, $key) {
+                [$year, $sem] = explode('|', $key);
+                $startYear = (int) explode('-', $year)[0];
+                $semOrder = ['1st Sem' => 1, '2nd Sem' => 2, 'Summer' => 3];
+                $semNumber = $semOrder[$sem] ?? 4;
+                return (-$startYear * 10) + $semNumber;
+            })
+            ->map(function($subjects, $period) use ($overallGPA) {
+                $periodUnits = 0;
+                $periodGradePoints = 0;
+                $processedSubjects = $subjects->map(function($enrolled) use (&$periodUnits, &$periodGradePoints) {
+                    $subject = $enrolled->subject;
+                    $units = $subject->units ?? 3;
+                    $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
 
-        // Random Forest:
-        $features = $this->computeStudentRiskFeatures($student->id);
+                    $enrolled->computed = (object) [
+                        'numeric_grade' => $numericGrade,
+                        'equivalent'    => $this->getGradeEquivalent($enrolled->grade),
+                        'color_class'   => $this->getGradeColorClass($numericGrade),
+                        'units'         => $units,
+                    ];
 
-        // This code is for Python Random Forest
-        // Initialize prediction variables
-        $prediction = null;
-        $predictionError = null;
+                    if ($numericGrade > 0) {
+                        $periodGradePoints += $numericGrade * $units;
+                        $periodUnits += $units;
+                    }
+                    return $enrolled;
+                });
 
-        // Only call the API if features are available and there's no error
-        if (!isset($features['error'])) {
-            try {
-                $response = Http::timeout(5)->post('http://127.0.0.1:8001/predict', [
-                    'overall_gwa'               => $features['overall_gwa'] ?? 0,
-                    'domain_gwa'                => $features['domain_gwa'] ?? 0,
-                    'programming_gpa'           => $features['programming_gpa'] ?? 0,
-                    'course_completion_ratio'   => $features['course_completion_ratio'] ?? 0,
-                    'failed_subject_count'      => $features['failed_subject_count'] ?? 0,
-                    'gpa_trend_slope'           => $features['gpa_trend_slope'] ?? 0,
-                    'has_probation'             => $features['has_probation'] ?? false,
-                ]);
+                $periodGWA = $periodUnits > 0 ? $periodGradePoints / $periodUnits : 0;
 
-                if ($response->successful()) {
-                    $prediction = $response->json();
-                } else {
-                    $predictionError = 'API returned status: ' . $response->status();
-                    Log::warning('Python API error: ' . $response->body());
-                }
-            } catch (\Exception $e) {
-                $predictionError = 'Could not connect to prediction service.';
-                Log::error('Failed to call Python API: ' . $e->getMessage());
-            }
-        }
+                // Prepare chart data for this semester
+                $chartData = [
+                    'semester_gpa' => round($periodGWA, 2),
+                    'overall_gpa'  => round($overallGPA, 2),
+                ];
 
-        // Generate explanations based on features
-        $explanations = [];
-        $overallGpa = $features['overall_gwa'] ?? null;
-        $programmingGpa = $features['programming_gpa'] ?? null;
-        $totalFailures = $features['failed_subject_count'] ?? 0;
-        $progFailures = $features['programming_failures'] ?? 0;
-        $gpaTrend = $features['gpa_trend_slope'] ?? 0;
-        $completionRatio = $features['course_completion_ratio'] ?? null;
-        $probationFlag = $features['has_probation'] ?? 0;
-
-        if ($overallGpa !== null && $overallGpa > 3.0) {  // adjust threshold as needed
-            $explanations[] = "Overall GWA indicates academic difficulty.";
-        }
-
-        if ($programmingGpa !== null && $programmingGpa > 3.0) {
-            $explanations[] = "Weak performance in core IT / programming subjects.";
-        }
-
-        if ($progFailures > 0) {
-            $explanations[] = $progFailures == 1
-                ? "Failed a core IT / programming subject."
-                : "Multiple failed IT core or programming subjects.";
-        } elseif ($totalFailures > 0) {
-            $explanations[] = "Failed subject(s) in non‑core areas – still a risk factor.";
-        }
-
-        if ($gpaTrend > 0.05) {
-            $explanations[] = "Declining academic performance trend.";
-        }
-
-        if ($completionRatio !== null && $completionRatio < 0.70) {
-            $explanations[] = "Low subject completion ratio this term.";
-        }
-
-        if ($probationFlag) {
-            $explanations[] = "Student is on academic probation.";
-        }
-
-        if (empty($explanations)) {
-            $explanations[] = "No significant academic risk factors detected.";
-        }
-
-        return view('student.dashboard', compact(
-            'user', 
-            'pageTitle',
-            'sem',
-            'hasEnrolledSubjects',
-            'availableSubjects',
-            'studentID',
-            'student',
-            // 'address',
-            'hasEnrolledSubjects',
-        
-            // Real data for dashboard
-            'gwa',
-            'currentYearGWA',
-            'totalSubjects',
-            'totalUnits',
-            'currentYearSubjects',
-            'currentYearUnits',
-            'enrolledSubjects',
-            'enrolledSubjects2',
-            'recentSubjects',
-            'gradeDistribution',
-            'academicProgress',
-            'gradesTableData',
-            'academicStanding',
-            'warnings',
-            'probation',
-            'incompleteGrades',
-            'allEnrolledSubjects',
-            'count_failed_subjects',
-            'features',
-            'prediction',
-            'predictionError',
-            'explanations'
-        ));
-
-    }
-
-    // Add to StudentController.php
-    private function getGradeStatus($numericGrade)
-    {
-        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
-            return 'Excellent';
-        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
-            return 'Very Good';
-        } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
-            return 'Good';
-        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
-            return 'Satisfactory';
-        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
-            return 'Needs Improvement';
-        } else {
-            return 'Pending';
-        }
-    }
-
-
-    public function updateSubjectGrade(Request $request)
-    {
-        $user = $request->user();
-        $student = Student::where('student_id', $user->id)->first();
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        $validated = $request->validate([
-            'subject_id' => 'required|integer|exists:subjects,id',
-            'grade' => 'required|string|in:1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,4.0,5.0,INC,DRP,PASS,FAIL'
-        ]);
-        
-        try {
-            // Update the grade
-            $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
-                ->where('subject_id', $validated['subject_id'])
-                ->first();
+                return (object) [
+                    'subjects'   => $processedSubjects,
+                    'periodGWA'  => $periodGWA,
+                    'periodUnits'=> $periodUnits,
+                    'chartData'  => $chartData,   // <-- new
+                ];
+            });
             
-            if ($enrolledSubject) {
-                $enrolledSubject->grade = $validated['grade'];
-                $enrolledSubject->save();
 
-                // Check if grade is passing (not 4.0, 5.0, or DRP)
-                // Also consider INC, FAIL as failing grades if needed
-                $failingGrades = ['4.0', '5.0', 'DRP', 'INC', 'FAIL']; // Adjust based on your requirements
-                
-                if (!in_array($validated['grade'], $failingGrades)) {
-                    // Delete from failed_subjects if grade is now passing
-                    FailedSubject::where('student_id', $student->id)
-                        ->where('subject_id', $validated['subject_id'])
-                        ->delete();
-                } else {
-                    // If grade is failing, ensure it's in failed_subjects
-                    // You might want to add logic here to insert if not exists
-                    FailedSubject::firstOrCreate([
-                        'student_id' => $student->id,
-                        'subject_id' => $validated['subject_id'],
-                        // Add any other required fields
-                    ]);
-                }
+                // number of subjects the student has ever failed (unique)
+                // $count_failed_subjects = FailedSubject::where('student_id', $student->id)->count();
 
-                // 🚀 Dispatch retraining job
-                RetrainModelsJob::dispatch();
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Grade updated successfully'
-                ]);
-            } else {
-                return response()->json(['error' => 'Subject not enrolled'], 404);
-            }
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
-        }
-    }
+                // total failed attempts (e.g., failing a subject twice counts as 2)
+                $count_failed_subjects = FailedSubject::where('student_id', $student->id)->sum('how_many');
 
-    // This is for adding subjects
-    public function updateSubjects(Request $request)
-    {
-        $request->validate([
-            'added_subjects' => 'nullable|array',
-            'added_subjects.*' => 'integer',
-            'dropped_subjects' => 'nullable|array', 
-            'dropped_subjects.*' => 'integer',
-            'subject_grades' => 'nullable|array',
-            'subject_grades.*.subject_id' => 'required|integer',
-            'subject_grades.*.grade' => 'required|string'
-        ]);
+                // Random Forest:
+                $features = $this->computeStudentRiskFeatures($student->id);
 
-        $user = Auth::guard('student')->user();
-        
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            // Get student info through user_info
-            $userInfo = $user->user_information;
-            
-            if (!$userInfo) {
-                return response()->json(['error' => 'Student information not found'], 404);
-            }
-            
-            $student = $userInfo->student;
-            
-            if (!$student) {
-                return response()->json(['error' => 'Student record not found'], 404);
-            }
-            
-            // Handle dropped subjects - also remove from related tables
-            if ($request->has('dropped_subjects') && count($request->dropped_subjects) > 0) {
-                EnrolledSubjects::where('student_id', $student->id)
-                    ->whereIn('subject_id', $request->dropped_subjects)
-                    ->delete();
-                
-                // Also remove from failed_subjects
-                FailedSubject::where('student_id', $student->id)
-                    ->whereIn('subject_id', $request->dropped_subjects)
-                    ->delete();
-                    
-                // Also remove from incomplete_grades
-                IncompleteGrade::where('student_id', $student->id)
-                    ->whereIn('subject_id', $request->dropped_subjects)
-                    ->delete();
-            }
-            
-            // Handle added subjects and grades
-            if ($request->has('added_subjects') && count($request->added_subjects) > 0) {
-                $currentYear = date('Y');
-                $currentMonth = date('n'); // 1-12
+                // This code is for Python Random Forest
+                // Initialize prediction variables
+                $prediction = null;
+                $predictionError = null;
 
-                foreach ($request->added_subjects as $subject_id) {
-                    // Check if already enrolled
-                    $alreadyEnrolled = EnrolledSubjects::where('student_id', $student->id)
-                        ->where('subject_id', $subject_id)
-                        ->exists();
-
-                    if (!$alreadyEnrolled) {
-                        // Get subject details to retrieve its semester
-                        $subjectDetail = Subject::find($subject_id);
-                        if (!$subjectDetail) {
-                            // Skip if subject doesn't exist (optional: log or return error)
-                            continue;
-                        }
-
-                        $subjectSemester = $subjectDetail->semester; // e.g., '1st Sem', '2nd Sem', 'Summer'
-
-                        // Determine school year based on subject's semester and current date
-                        $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
-
-                        // Insert new enrollment with sem and year
-                        EnrolledSubjects::create([
-                            'student_id' => $student->id,
-                            'subject_id' => $subject_id,
-                            'grade'      => null, // Grade will be set later by instructor
-                            'sem'        => $subjectSemester,
-                            'year'       => $schoolYear,
+                // Only call the API if features are available and there's no error
+                if (!isset($features['error'])) {
+                    try {
+                        $response = Http::timeout(5)->post('http://127.0.0.1:8001/predict', [
+                            'overall_gwa'               => $features['overall_gwa'] ?? 0,
+                            'domain_gwa'                => $features['domain_gwa'] ?? 0,
+                            'programming_gpa'           => $features['programming_gpa'] ?? 0,
+                            'course_completion_ratio'   => $features['course_completion_ratio'] ?? 0,
+                            'failed_subject_count'      => $features['failed_subject_count'] ?? 0,
+                            'gpa_trend_slope'           => $features['gpa_trend_slope'] ?? 0,
+                            'has_probation'             => $features['has_probation'] ?? false,
                         ]);
+
+                        if ($response->successful()) {
+                            $prediction = $response->json();
+                        } else {
+                            $predictionError = 'API returned status: ' . $response->status();
+                            Log::warning('Python API error: ' . $response->body());
+                        }
+                    } catch (\Exception $e) {
+                        $predictionError = 'Could not connect to prediction service.';
+                        Log::error('Failed to call Python API: ' . $e->getMessage());
                     }
                 }
+
+                // Generate explanations based on features
+                $explanations = [];
+                $overallGpa = $features['overall_gwa'] ?? null;
+                $programmingGpa = $features['programming_gpa'] ?? null;
+                $totalFailures = $features['failed_subject_count'] ?? 0;
+                $progFailures = $features['programming_failures'] ?? 0;
+                $gpaTrend = $features['gpa_trend_slope'] ?? 0;
+                $completionRatio = $features['course_completion_ratio'] ?? null;
+                $probationFlag = $features['has_probation'] ?? 0;
+
+                if ($overallGpa !== null && $overallGpa > 3.0) {  // adjust threshold as needed
+                    $explanations[] = "Overall GWA indicates academic difficulty.";
+                }
+
+                if ($programmingGpa !== null && $programmingGpa > 3.0) {
+                    $explanations[] = "Weak performance in core IT / programming subjects.";
+                }
+
+                if ($progFailures > 0) {
+                    $explanations[] = $progFailures == 1
+                        ? "Failed a core IT / programming subject."
+                        : "Multiple failed IT core or programming subjects.";
+                } elseif ($totalFailures > 0) {
+                    $explanations[] = "Failed subject(s) in non‑core areas – still a risk factor.";
+                }
+
+                if ($gpaTrend > 0.05) {
+                    $explanations[] = "Declining academic performance trend.";
+                }
+
+                if ($completionRatio !== null && $completionRatio < 0.70) {
+                    $explanations[] = "Low subject completion ratio this term.";
+                }
+
+                if ($probationFlag) {
+                    $explanations[] = "Student is on academic probation.";
+                }
+
+                if (empty($explanations)) {
+                    $explanations[] = "No significant academic risk factors detected.";
+                }
+
+                return view('student.dashboard', compact(
+                    'user', 
+                    'pageTitle',
+                    'sem',
+                    'hasEnrolledSubjects',
+                    'availableSubjects',
+                    'studentID',
+                    'student',
+                    // 'address',
+                    'hasEnrolledSubjects',
+                
+                    // Real data for dashboard
+                    'gwa',
+                    'currentYearGWA',
+                    'totalSubjects',
+                    'totalUnits',
+                    'currentYearSubjects',
+                    'currentYearUnits',
+                    'enrolledSubjects',
+                    'enrolledSubjects2',
+                    'recentSubjects',
+                    'gradeDistribution',
+                    'academicProgress',
+                    'gradesTableData',
+                    'academicStanding',
+                    'warnings',
+                    'probation',
+                    'incompleteGrades',
+                    'allEnrolledSubjects',
+                    'count_failed_subjects',
+                    'features',
+                    'prediction',
+                    'predictionError',
+                    'explanations',
+                    'groupedGrades'
+                ));
+
             }
-            
-            // Handle grade updates if provided
-            if ($request->has('subject_grades') && count($request->subject_grades) > 0) {
-                foreach ($request->subject_grades as $gradeData) {
-                    $subject_id = $gradeData['subject_id'];
-                    $grade = strtoupper(trim($gradeData['grade']));
-                    
-                    // Normalize grade format for comparison
-                    $normalizedGrade = $grade;
-                    if ($grade === '4') $normalizedGrade = '4.0';
-                    if ($grade === '5') $normalizedGrade = '5.0';
-                    
-                    // Update grade in enrolled_subjects
+
+            // Add to StudentController.php
+            private function getGradeStatus($numericGrade)
+            {
+                if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+                    return 'Excellent';
+                } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
+                    return 'Very Good';
+                } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
+                    return 'Good';
+                } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+                    return 'Satisfactory';
+                } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+                    return 'Needs Improvement';
+                } else {
+                    return 'Pending';
+                }
+            }
+
+
+            public function updateSubjectGrade(Request $request)
+            {
+                $user = $request->user();
+                $student = Student::where('student_id', $user->id)->first();
+                
+                if (!$student) {
+                    return response()->json(['error' => 'Student not found'], 404);
+                }
+                
+                $validated = $request->validate([
+                    'subject_id' => 'required|integer|exists:subjects,id',
+                    'grade' => 'required|string|in:1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,4.0,5.0,INC,DRP,PASS,FAIL'
+                ]);
+                
+                try {
+                    // Update the grade
                     $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
-                        ->where('subject_id', $subject_id)
+                        ->where('subject_id', $validated['subject_id'])
                         ->first();
-                        
+                    
                     if ($enrolledSubject) {
-                        $oldGrade = $enrolledSubject->grade;
-                        $enrolledSubject->grade = $grade;
+                        $enrolledSubject->grade = $validated['grade'];
                         $enrolledSubject->save();
+
+                        // Check if grade is passing (not 4.0, 5.0, or DRP)
+                        // Also consider INC, FAIL as failing grades if needed
+                        $failingGrades = ['4.0', '5.0', 'DRP', 'INC', 'FAIL']; // Adjust based on your requirements
                         
-                        // Define failing grades
-                        $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
-                        $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
-                        $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
-                        
-                        // If grade is passing (not failing), clean up related records
-                        if (!$isFailingGrade) {
-                            // Remove from failed_subjects if exists
+                        if (!in_array($validated['grade'], $failingGrades)) {
+                            // Delete from failed_subjects if grade is now passing
                             FailedSubject::where('student_id', $student->id)
-                                ->where('subject_id', $subject_id)
+                                ->where('subject_id', $validated['subject_id'])
                                 ->delete();
-                                
-                            // Remove from incomplete_grades if exists
-                            IncompleteGrade::where('student_id', $student->id)
+                        } else {
+                            // If grade is failing, ensure it's in failed_subjects
+                            // You might want to add logic here to insert if not exists
+                            FailedSubject::firstOrCreate([
+                                'student_id' => $student->id,
+                                'subject_id' => $validated['subject_id'],
+                                // Add any other required fields
+                            ]);
+                        }
+
+                        // 🚀 Dispatch retraining job
+                        RetrainModelsJob::dispatch();
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Grade updated successfully'
+                        ]);
+                    } else {
+                        return response()->json(['error' => 'Subject not enrolled'], 404);
+                    }
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
+                }
+            }
+
+            // This is for adding subjects
+            public function updateSubjects(Request $request)
+            {
+                $request->validate([
+                    'added_subjects' => 'nullable|array',
+                    'added_subjects.*' => 'integer',
+                    'dropped_subjects' => 'nullable|array', 
+                    'dropped_subjects.*' => 'integer',
+                    'subject_grades' => 'nullable|array',
+                    'subject_grades.*.subject_id' => 'required|integer',
+                    'subject_grades.*.grade' => 'required|string'
+                ]);
+
+                $user = Auth::guard('student')->user();
+                
+                if (!$user) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+                
+                try {
+                    DB::beginTransaction();
+                    
+                    // Get student info through user_info
+                    $userInfo = $user->user_information;
+                    
+                    if (!$userInfo) {
+                        return response()->json(['error' => 'Student information not found'], 404);
+                    }
+                    
+                    $student = $userInfo->student;
+                    
+                    if (!$student) {
+                        return response()->json(['error' => 'Student record not found'], 404);
+                    }
+                    
+                    // Handle dropped subjects - also remove from related tables
+                    if ($request->has('dropped_subjects') && count($request->dropped_subjects) > 0) {
+                        EnrolledSubjects::where('student_id', $student->id)
+                            ->whereIn('subject_id', $request->dropped_subjects)
+                            ->delete();
+                        
+                        // Also remove from failed_subjects
+                        FailedSubject::where('student_id', $student->id)
+                            ->whereIn('subject_id', $request->dropped_subjects)
+                            ->delete();
+                            
+                        // Also remove from incomplete_grades
+                        IncompleteGrade::where('student_id', $student->id)
+                            ->whereIn('subject_id', $request->dropped_subjects)
+                            ->delete();
+                    }
+                    
+                    // Handle added subjects and grades
+                    if ($request->has('added_subjects') && count($request->added_subjects) > 0) {
+                        $currentYear = date('Y');
+                        $currentMonth = date('n'); // 1-12
+
+                        foreach ($request->added_subjects as $subject_id) {
+                            // Check if already enrolled
+                            $alreadyEnrolled = EnrolledSubjects::where('student_id', $student->id)
                                 ->where('subject_id', $subject_id)
-                                ->delete();
+                                ->exists();
+
+                            if (!$alreadyEnrolled) {
+                                // Get subject details to retrieve its semester
+                                $subjectDetail = Subject::find($subject_id);
+                                if (!$subjectDetail) {
+                                    // Skip if subject doesn't exist (optional: log or return error)
+                                    continue;
+                                }
+
+                                $subjectSemester = $subjectDetail->semester; // e.g., '1st Sem', '2nd Sem', 'Summer'
+
+                                // Determine school year based on subject's semester and current date
+                                $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
+
+                                // Insert new enrollment with sem and year
+                                EnrolledSubjects::create([
+                                    'student_id' => $student->id,
+                                    'subject_id' => $subject_id,
+                                    'grade'      => null, // Grade will be set later by instructor
+                                    'sem'        => $subjectSemester,
+                                    'year'       => $schoolYear,
+                                ]);
+                            }
+                        }
+                    }
+                    
+                    // Handle grade updates if provided
+                    if ($request->has('subject_grades') && count($request->subject_grades) > 0) {
+                        foreach ($request->subject_grades as $gradeData) {
+                            $subject_id = $gradeData['subject_id'];
+                            $grade = strtoupper(trim($gradeData['grade']));
+                            
+                            // Normalize grade format for comparison
+                            $normalizedGrade = $grade;
+                            if ($grade === '4') $normalizedGrade = '4.0';
+                            if ($grade === '5') $normalizedGrade = '5.0';
+                            
+                            // Update grade in enrolled_subjects
+                            $enrolledSubject = EnrolledSubjects::where('student_id', $student->id)
+                                ->where('subject_id', $subject_id)
+                                ->first();
                                 
-                            // If this subject was previously failing, we need to update warnings
-                            if ($wasFailingGrade) {
-                                $needWarningUpdate = true;
+                            if ($enrolledSubject) {
+                                $oldGrade = $enrolledSubject->grade;
+                                $enrolledSubject->grade = $grade;
+                                $enrolledSubject->save();
+                                
+                                // Define failing grades
+                                $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
+                                $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
+                                $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
+                                
+                                // If grade is passing (not failing), clean up related records
+                                if (!$isFailingGrade) {
+                                    // Remove from failed_subjects if exists
+                                    FailedSubject::where('student_id', $student->id)
+                                        ->where('subject_id', $subject_id)
+                                        ->delete();
+                                        
+                                    // Remove from incomplete_grades if exists
+                                    IncompleteGrade::where('student_id', $student->id)
+                                        ->where('subject_id', $subject_id)
+                                        ->delete();
+                                        
+                                    // If this subject was previously failing, we need to update warnings
+                                    if ($wasFailingGrade) {
+                                        $needWarningUpdate = true;
+                                    }
+                                }
+                                
+                                // Handle specific grade types
+                                if ($grade === 'INC') {
+                                    $this->handleIncompleteGrade($student->id, $subject_id);
+                                    $needWarningUpdate = true;
+                                } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
+                                    $this->handleFailedGrade($student->id, $subject_id);
+                                    $needWarningUpdate = true;
+                                }
                             }
                         }
                         
-                        // Handle specific grade types
-                        if ($grade === 'INC') {
-                            $this->handleIncompleteGrade($student->id, $subject_id);
-                            $needWarningUpdate = true;
-                        } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
-                            $this->handleFailedGrade($student->id, $subject_id);
+                        // After processing all grade updates, update warnings if needed
+                        if (isset($needWarningUpdate) && $needWarningUpdate) {
+                            $this->updateStudentWarnings($student->id);
+                            $this->cleanupWarningsAndProbation($student->id);
+                        }
+                    }
+                    
+                    // Update student's enrolled status if needed
+                    $enrolledCount = EnrolledSubjects::where('student_id', $student->id)->count();
+                    if ($enrolledCount > 0) {
+                        $student->enrolled = 1;
+                        $student->status = 'Officially Enrolled';
+                    } else {
+                        $student->enrolled = 0;
+                        $student->status = 'Not Enrolled';
+                    }
+                    $student->save();
+                    
+                    DB::commit();
+
+                    // 🚀 Dispatch retraining job
+                    RetrainModelsJob::dispatch();
+                    
+                    return response()->json([
+                        'message' => 'Subjects updated successfully',
+                        'enrolled_count' => $enrolledCount
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Update subjects error: ' . $e->getMessage());
+                    return response()->json(['error' => 'Failed to update subjects: ' . $e->getMessage()], 500);
+                }
+            }
+
+            // This is for updating the grades
+            public function updateGrade(Request $request, $enrolledId)
+            {
+                $request->validate([
+                    'grade' => 'required|string'
+                ]);
+
+                $user = Auth::guard('student')->user();
+
+                if (!$user) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+
+                try {
+                    DB::beginTransaction();
+
+                    // Get student record
+                    $userInfo = $user->user_information;
+                    if (!$userInfo) {
+                        return response()->json(['error' => 'Student information not found'], 404);
+                    }
+
+                    $student = $userInfo->student;
+                    if (!$student) {
+                        return response()->json(['error' => 'Student record not found'], 404);
+                    }
+
+                    // Find the enrolled subject record that belongs to this student
+                    $enrolledSubject = EnrolledSubjects::where('id', $enrolledId)
+                        ->where('student_id', $student->id)
+                        ->first();
+
+                    if (!$enrolledSubject) {
+                        return response()->json(['error' => 'Enrolled subject not found'], 404);
+                    }
+
+                    $subject_id = $enrolledSubject->subject_id;
+                    $grade = strtoupper(trim($request->grade));
+                    $oldGrade = $enrolledSubject->grade;
+
+                    // Normalize numeric grades
+                    $normalizedGrade = $grade;
+                    if ($grade === '4') $normalizedGrade = '4.0';
+                    if ($grade === '5') $normalizedGrade = '5.0';
+
+                    // Update the grade
+                    $enrolledSubject->grade = $grade;
+                    $enrolledSubject->save();
+
+                    // Define failing grades
+                    $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
+                    $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
+                    $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
+
+                    // If grade is passing, clean up any existing failure/incomplete records
+                    if (!$isFailingGrade) {
+                        FailedSubject::where('student_id', $student->id)
+                            ->where('subject_id', $subject_id)
+                            ->delete();
+
+                        IncompleteGrade::where('student_id', $student->id)
+                            ->where('subject_id', $subject_id)
+                            ->delete();
+
+                        // If it was failing before, a warning update might be needed
+                        if ($wasFailingGrade) {
                             $needWarningUpdate = true;
                         }
                     }
+
+                    // Handle specific grade types
+                    if ($grade === 'INC') {
+                        $this->handleIncompleteGrade($student->id, $subject_id);
+                        $needWarningUpdate = true;
+                    } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
+                        $this->handleFailedGrade($student->id, $subject_id);
+                        $needWarningUpdate = true;
+                    }
+
+                    // Recalculate warnings and probation status if something changed
+                    if (isset($needWarningUpdate) && $needWarningUpdate) {
+                        $this->updateStudentWarnings($student->id);
+                        $this->cleanupWarningsAndProbation($student->id);
+                    }
+
+                    DB::commit();
+
+                    // 🚀 Dispatch retraining job
+                    RetrainModelsJob::dispatch();
+
+                    return response()->json([
+                        'message' => 'Grade updated successfully',
+                        'grade' => $grade,
+                        'enrolled_id' => $enrolledId
+                    ]);
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Update single grade error: ' . $e->getMessage());
+                    return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
                 }
+            }
+
+            private function cleanupWarningsAndProbation($student_id)
+            {
+                // Get current failed subjects count
+                $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
+                $distinctFailedSubjects = $failedSubjects->count();
                 
-                // After processing all grade updates, update warnings if needed
-                if (isset($needWarningUpdate) && $needWarningUpdate) {
-                    $this->updateStudentWarnings($student->id);
-                    $this->cleanupWarningsAndProbation($student->id);
-                }
-            }
-            
-            // Update student's enrolled status if needed
-            $enrolledCount = EnrolledSubjects::where('student_id', $student->id)->count();
-            if ($enrolledCount > 0) {
-                $student->enrolled = 1;
-                $student->status = 'Officially Enrolled';
-            } else {
-                $student->enrolled = 0;
-                $student->status = 'Not Enrolled';
-            }
-            $student->save();
-            
-            DB::commit();
-
-            // 🚀 Dispatch retraining job
-            RetrainModelsJob::dispatch();
-            
-            return response()->json([
-                'message' => 'Subjects updated successfully',
-                'enrolled_count' => $enrolledCount
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Update subjects error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to update subjects: ' . $e->getMessage()], 500);
-        }
-    }
-
-    // This is for updating the grades
-    public function updateGrade(Request $request, $enrolledId)
-    {
-        $request->validate([
-            'grade' => 'required|string'
-        ]);
-
-        $user = Auth::guard('student')->user();
-
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // Get student record
-            $userInfo = $user->user_information;
-            if (!$userInfo) {
-                return response()->json(['error' => 'Student information not found'], 404);
-            }
-
-            $student = $userInfo->student;
-            if (!$student) {
-                return response()->json(['error' => 'Student record not found'], 404);
-            }
-
-            // Find the enrolled subject record that belongs to this student
-            $enrolledSubject = EnrolledSubjects::where('id', $enrolledId)
-                ->where('student_id', $student->id)
-                ->first();
-
-            if (!$enrolledSubject) {
-                return response()->json(['error' => 'Enrolled subject not found'], 404);
-            }
-
-            $subject_id = $enrolledSubject->subject_id;
-            $grade = strtoupper(trim($request->grade));
-            $oldGrade = $enrolledSubject->grade;
-
-            // Normalize numeric grades
-            $normalizedGrade = $grade;
-            if ($grade === '4') $normalizedGrade = '4.0';
-            if ($grade === '5') $normalizedGrade = '5.0';
-
-            // Update the grade
-            $enrolledSubject->grade = $grade;
-            $enrolledSubject->save();
-
-            // Define failing grades
-            $failingGrades = ['4.0', '5.0', 'DRP', 'FAIL', 'INC'];
-            $isFailingGrade = in_array($normalizedGrade, $failingGrades) || $grade === 'FAIL' || $grade === 'INC';
-            $wasFailingGrade = in_array($oldGrade, $failingGrades) || $oldGrade === 'FAIL' || $oldGrade === 'INC';
-
-            // If grade is passing, clean up any existing failure/incomplete records
-            if (!$isFailingGrade) {
-                FailedSubject::where('student_id', $student->id)
-                    ->where('subject_id', $subject_id)
-                    ->delete();
-
-                IncompleteGrade::where('student_id', $student->id)
-                    ->where('subject_id', $subject_id)
-                    ->delete();
-
-                // If it was failing before, a warning update might be needed
-                if ($wasFailingGrade) {
-                    $needWarningUpdate = true;
+                // Remove probation if student has only 2 or fewer distinct failed subjects
+                if ($distinctFailedSubjects <= 2) {
+                    StudentProbation::where('student_id', $student_id)
+                        ->where('status', 'Active')
+                        ->delete();
                 }
             }
 
-            // Handle specific grade types
-            if ($grade === 'INC') {
-                $this->handleIncompleteGrade($student->id, $subject_id);
-                $needWarningUpdate = true;
-            } elseif (in_array($normalizedGrade, ['4.0', '5.0', 'DRP', 'FAIL']) || $grade === 'FAIL') {
-                $this->handleFailedGrade($student->id, $subject_id);
-                $needWarningUpdate = true;
+            private function handleIncompleteGrade($student_id, $subject_id)
+            {
+                // Check if incomplete grade already exists
+                $existingIncomplete = IncompleteGrade::where('student_id', $student_id)
+                    ->where('subject_id', $subject_id)
+                    ->where('status', 'Pending')
+                    ->first();
+                    
+                if (!$existingIncomplete) {
+                    // Create new incomplete grade record
+                    IncompleteGrade::create([
+                        'student_id' => $student_id,
+                        'subject_id' => $subject_id,
+                        'grade' => 'INC',
+                        'date_issued' => now(),
+                        'completion_deadline' => now()->addDays(60), // 60 days to complete
+                        'status' => 'Pending',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                } else {
+                    // Update existing incomplete grade
+                    $existingIncomplete->update([
+                        'completion_deadline' => now()->addDays(60),
+                        'status' => 'Pending',
+                        'updated_at' => now()
+                    ]);
+                }
             }
 
-            // Recalculate warnings and probation status if something changed
-            if (isset($needWarningUpdate) && $needWarningUpdate) {
-                $this->updateStudentWarnings($student->id);
-                $this->cleanupWarningsAndProbation($student->id);
-            }
 
-            DB::commit();
-
-            // 🚀 Dispatch retraining job
-            RetrainModelsJob::dispatch();
-
-            return response()->json([
-                'message' => 'Grade updated successfully',
-                'grade' => $grade,
-                'enrolled_id' => $enrolledId
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Update single grade error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to update grade: ' . $e->getMessage()], 500);
-        }
-    }
-
-    private function cleanupWarningsAndProbation($student_id)
-    {
-        // Get current failed subjects count
-        $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
-        $distinctFailedSubjects = $failedSubjects->count();
-        
-        // Remove probation if student has only 2 or fewer distinct failed subjects
-        if ($distinctFailedSubjects <= 2) {
-            StudentProbation::where('student_id', $student_id)
-                ->where('status', 'Active')
-                ->delete();
-        }
-    }
-
-    private function handleIncompleteGrade($student_id, $subject_id)
-    {
-        // Check if incomplete grade already exists
-        $existingIncomplete = IncompleteGrade::where('student_id', $student_id)
-            ->where('subject_id', $subject_id)
-            ->where('status', 'Pending')
-            ->first();
-            
-        if (!$existingIncomplete) {
-            // Create new incomplete grade record
-            IncompleteGrade::create([
-                'student_id' => $student_id,
-                'subject_id' => $subject_id,
-                'grade' => 'INC',
-                'date_issued' => now(),
-                'completion_deadline' => now()->addDays(60), // 60 days to complete
-                'status' => 'Pending',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        } else {
-            // Update existing incomplete grade
-            $existingIncomplete->update([
-                'completion_deadline' => now()->addDays(60),
-                'status' => 'Pending',
-                'updated_at' => now()
-            ]);
-        }
-    }
-
-
-    private function handleFailedGrade($student_id, $subject_id)
-    {
-        // Always insert a new record for each failing grade
-        FailedSubject::create([
-            'student_id' => $student_id,
-            'subject_id' => $subject_id,
-            'how_many' => '1'  // Always set to '1' since each record represents one failure
-        ]);
-    }
-
-    private function updateStudentWarnings($student_id)
-    {
-        // Get all failed subjects for this student
-        $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
-        
-        // Count distinct failed subjects
-        $distinctFailedSubjects = $failedSubjects->count();
-        
-        // Calculate total failed attempts (sum of how_many)
-        $totalFailures = $failedSubjects->sum(function($item) {
-            return intval($item->how_many);
-        });
-        
-        // Determine new warning type based ONLY on distinct failed subjects
-        $newWarningType = null;
-        
-        // Rule 1: If 3 or more distinct subjects failed - Final Warning
-        if ($distinctFailedSubjects >= 3) {
-            $newWarningType = 'Final Warning';
-        } 
-        // Rule 2: If 2 distinct subjects failed - Second Warning
-        elseif ($distinctFailedSubjects == 2) {
-            $newWarningType = 'Second Warning';
-        }
-        // Rule 3: If 1 distinct subject failed - First Warning
-        elseif ($distinctFailedSubjects == 1) {
-            // Check if this single subject failed 3 or more times
-            $hasTripleFailure = $failedSubjects->contains(function($item) {
-                return intval($item->how_many) >= 3;
-            });
-            
-            if ($hasTripleFailure) {
-                $newWarningType = 'Final Warning';
-            } else {
-                $newWarningType = 'First Warning';
-            }
-        }
-        
-        // Get existing active warning
-        $existingWarning = StudentWarning::where('student_id', $student_id)
-            ->where('status', 'Active')
-            ->first();
-        
-        if ($newWarningType) {
-            // Get subject IDs for the reason
-            $subjectIds = $failedSubjects->pluck('subject_id')->toArray();
-            $subjectNames = Subject::whereIn('id', $subjectIds)
-                ->pluck('name')
-                ->implode(', ');
-                
-            $reason = 'Failed in subject(s): ' . $subjectNames . 
-                    ' (Total failures: ' . $totalFailures . 
-                    ', Distinct subjects: ' . $distinctFailedSubjects . ')';
-            
-            if ($existingWarning) {
-                // Update existing warning
-                $existingWarning->update([
-                    'warning_type' => $newWarningType,
-                    'reason' => $reason,
-                    'related_subject_ids' => implode(',', $subjectIds),
-                    'updated_at' => now()
-                ]);
-            } else {
-                // Create new warning
-                StudentWarning::create([
+            private function handleFailedGrade($student_id, $subject_id)
+            {
+                // Always insert a new record for each failing grade
+                FailedSubject::create([
                     'student_id' => $student_id,
-                    'warning_type' => $newWarningType,
-                    'reason' => $reason,
-                    'issued_date' => now(),
-                    'expiry_date' => now()->addYear(),
-                    'status' => 'Active',
-                    'related_subject_ids' => implode(',', $subjectIds),
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-            
-            // Handle probation for Final Warning
-            if ($newWarningType === 'Final Warning') {
-                $this->createProbationRecord($student_id);
-            } elseif ($existingWarning && $existingWarning->warning_type === 'Final Warning' && $newWarningType !== 'Final Warning') {
-                // If warning was downgraded from Final Warning, remove probation
-                StudentProbation::where('student_id', $student_id)
-                    ->where('status', 'Active')
-                    ->delete();
-            }
-        } else {
-            // No failed subjects - delete any existing warnings and probation
-            if ($existingWarning) {
-                $existingWarning->delete();
-            }
-            StudentProbation::where('student_id', $student_id)
-                ->where('status', 'Active')
-                ->delete();
-        }
-        
-        // Always run cleanup to ensure probation is removed when appropriate
-        $this->cleanupWarningsAndProbation($student_id);
-    }
-
-    private function createProbationRecord($student_id)
-    {
-        // Get current date for SY and SEM calculation
-        $currentYear = date('Y');
-        $currentMonth = date('n'); // 1-12
-        
-        // Calculate School Year and Semester
-        if ($currentMonth >= 7 && $currentMonth <= 12) {
-            // July to December: First Semester of current school year
-            $schoolYear = $currentYear . '-' . ($currentYear + 1);
-            $semester = 'SEM 1';
-        } else {
-            // January to June: Second Semester of previous school year
-            $schoolYear = ($currentYear - 1) . '-' . $currentYear;
-            $semester = 'SEM 2';
-        }
-        
-        $pageTitle = "SY: $schoolYear $semester";
-
-        $sem = $semester;
-        
-        // Check if student is already on probation
-        $existingProbation = StudentProbation::where('student_id', $student_id)
-            ->whereIn('status', ['Active', 'Pending'])
-            ->first();
-            
-        if (!$existingProbation) {
-            StudentProbation::create([
-                'student_id' => $student_id,
-                'reason' => 'Excessive failed subjects - Final Warning issued',
-                'status' => 'Active',
-                'credit_limit' => 12, // Reduced credit limit
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        }
-    }
-
-    public function getAvailableSubjectsForAddDrop(Request $request)
-    {
-        $user = Auth::guard('student')->user();
-        $student = $user->user_information->student;
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        // Get current enrolled subject IDs
-        $enrolledSubjectIds = EnrolledSubjects::where('student_id', $student->id)
-            ->pluck('subject_id')
-            ->toArray();
-
-        $availableSubjects = [];
-
-        // Get the curriculum ID based on the student's curriculum year
-        $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
-
-        if ($curriculum) {
-            $availableSubjects = Subject::where('curriculum_id', $curriculum->id)
-                ->where('is_active', 1)
-                ->whereNotIn('id', $enrolledSubjectIds)
-                ->orderBy('year_level')
-                ->orderBy('semester')
-                ->orderBy('code')
-                ->get()
-                ->groupBy('year_level')
-                ->map(function ($yearSubjects) {
-                    return $yearSubjects->groupBy('semester');
-                });
-        }
-
-        return response()->json([
-            'availableSubjects' => $availableSubjects
-        ]);
-    }
-
-    // Add this method to your StudentController
-    public function getEnrolledSubjects(Request $request)
-    {
-        $user = $request->user();
-        $student = Student::where('student_id', $user->id)->first();
-        
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        
-        $action = $request->query('action');
-        
-        if ($action === 'available') {
-            // Get available subjects (not yet enrolled)
-            return $this->getAvailableSubjectsForAddDrop($request);
-        }
-        
-        // Otherwise, return enrolled subjects
-        $enrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
-            ->with('subject')
-            ->get()
-            ->map(function ($enrolled) {
-                return [
-                    'subject_id' => $enrolled->subject_id,
-                    'subject_code' => $enrolled->subject->code,
-                    'subject_name' => $enrolled->subject->name,
-                    'units' => $enrolled->subject->units,
-                    'grade' => $enrolled->grade
-                ];
-            });
-        
-        return response()->json([
-            'enrolledSubjects' => $enrolledSubjects
-        ]);
-    }
-
-
-    // Add this method to StudentController.php
-    private function getGradeColor($numericGrade)
-    {
-        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
-            return '#28a745'; // Green - Excellent
-        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
-            return '#17a2b8'; // Cyan - Very Good
-        } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
-            return '#ffc107'; // Yellow - Good
-        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
-            return '#fd7e14'; // Orange - Satisfactory
-        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
-            return '#dc3545'; // Red - Failing
-        } else {
-            return '#6c757d'; // Gray - Special grades
-        }
-    }
-
-
-    // Add a new method to handle subject enrollment submission. This will be called during first time using the system.
-    public function enrollSubjects(Request $request)
-    {
-        try {
-            $user = Auth::guard('student')->user();
-            $student = $user->user_information->student;
-            $studentID = $student->id;
-
-            $enrolledSubjects = $request->input('enrolled_subjects');
-
-            // Validate student exists
-            $student = Student::where('id', $studentID)->first();
-            if (!$student) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Student not found'
+                    'subject_id' => $subject_id,
+                    'how_many' => '1'  // Always set to '1' since each record represents one failure
                 ]);
             }
 
-            // Validate input
-            if (empty($enrolledSubjects) || !is_array($enrolledSubjects)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No subjects selected'
-                ]);
-            }
-
-            $enrollments = [];
-            $totalGradePoints = 0;
-            $totalUnits = 0;
-
-            // Get current date parts
-            $currentYear = date('Y');
-            $currentMonth = date('n'); // 1-12
-
-            foreach ($enrolledSubjects as $subject) {
-                if (!isset($subject['subject_id'], $subject['grade'])) {
-                    continue;
-                }
-
-                // Get subject details including its fixed semester
-                $subjectDetail = Subject::find($subject['subject_id']);
-                if (!$subjectDetail) {
-                    continue;
-                }
-
-                $units = $subjectDetail->units ?: 3; // default to 3 if not set
-                $subjectSemester = $subjectDetail->semester; // '1st Sem', '2nd Sem', or 'Summer'
-
-                // Current Year
-                $currentYear = date('Y');
-
-                // Determine school year based on subject's semester
-                $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
-
-                // Convert grade to numeric for GWA calculation
-                $numericGrade = $this->convertGradeToNumeric($subject['grade']);
-
-                // Save enrollment with correct semester and school year
-                EnrolledSubjects::create([
-                    'student_id' => $studentID,
-                    'subject_id' => $subject['subject_id'],
-                    'grade'      => $subject['grade'],
-                    'sem'        => $subjectSemester,  // from the subject table
-                    'year'         => $schoolYear
-                ]);
-
-                // Accumulate GWA data
-                $totalGradePoints += ($numericGrade * $units);
-                $totalUnits += $units;
-
-                $enrollments[] = [
-                    'subject_id' => $subject['subject_id'],
-                    'grade'      => $subject['grade'],
-                    'units'      => $units,
-                    'semester'   => $subjectSemester,
-                    'year' => $schoolYear
-                ];
-            }
-
-            // Calculate GWA
-            $gwa = $totalUnits > 0 ? $totalGradePoints / $totalUnits : 0;
-
-            // Update student status
-            $student->status = 'Officially Enrolled';
-            $student->enrolled = 1;
-            $student->save();
-
-            RetrainModelsJob::dispatch();
-
-            return response()->json([
-                'success'          => true,
-                'message'          => 'Subjects enrolled successfully',
-                'gwa'              => number_format($gwa, 2),
-                'enrollment_count' => count($enrollments)
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Determine the school year based on the subject's semester and current date.
-     *
-     * @param string $semester  (e.g., '1st Sem', '2nd Sem', 'Summer')
-     * @param int $year         current year (e.g., 2025)
-     * @param int $month        current month (1-12)
-     * @return string           school year in format "YYYY-YYYY"
-     */
-    private function determineSchoolYear($semester, $year, $month)
-    {
-        switch ($semester) {
-            case '1st Sem':
-                // First semester always belongs to the academic year that starts in the current calendar year.
-                // Example: If today is Jan 2025, the upcoming first semester (Aug 2025) is 2025-2026.
-                // If today is Aug 2025, the current first semester is also 2025-2026.
-                return $year . '-' . ($year + 1);
-
-            case '2nd Sem':
-                // Second semester starts in January.
-                // If we are in months January–June, we are in the second semester of the academic year that began last year.
-                // If we are in months July–December, we are approaching the second semester of the next academic year.
-                if ($month >= 1 && $month <= 6) {
-                    return ($year - 1) . '-' . $year;
-                } else {
-                    return $year . '-' . ($year + 1);
-                }
-
-            case 'Summer':
-                // Summer follows the second semester, so use the same logic as second semester.
-                if ($month >= 1 && $month <= 6) {
-                    return ($year - 1) . '-' . $year;
-                } else {
-                    return $year . '-' . ($year + 1);
-                }
-
-            default:
-                // Fallback to the global logic you originally used
-                if ($month >= 7 && $month <= 12) {
-                    return $year . '-' . ($year + 1);
-                } else {
-                    return ($year - 1) . '-' . $year;
-                }
-        }
-    }
-    
-
-    // Helper method to convert letter grades to numeric
-    private function convertGradeToNumeric($grade)
-    {
-        $gradeMap = [
-            // Passing Grades
-            '1.0' => 1.0, '1.1' => 1.1, '1.2' => 1.2, '1.3' => 1.3, '1.4' => 1.4,
-            '1.5' => 1.5, '1.6' => 1.6, '1.7' => 1.7, '1.8' => 1.8, '1.9' => 1.9,
-            '2.0' => 2.0, '2.1' => 2.1, '2.2' => 2.2, '2.3' => 2.3, '2.4' => 2.4,
-            '2.5' => 2.5, '2.6' => 2.6, '2.7' => 2.7, '2.8' => 2.8, '2.9' => 2.9,
-            '3.0' => 3.0,
-
-            // Failing and Special Grades
-            '4.0' => 4.0, '5.0' => 5.0,
-            'INC' => 0.0, 'DRP' => 0.0,
-            
-            // Original descriptive mappings
-            'PASS' => 1.0, 'FAIL' => 5.0,
-        ];
-        
-        return $gradeMap[$grade] ?? 0;
-    }
-
-    // helper method to get grade equivalent
-    private function getGradeEquivalent($grade)
-    {
-        $gradeMap = [
-            // Passing grades
-            '1.0' => '1.0', '1.1' => '1.1', '1.2' => '1.2', '1.3' => '1.3', '1.4' => '1.4',
-            '1.5' => '1.5', '1.6' => '1.6', '1.7' => '1.7', '1.8' => '1.8', '1.9' => '1.9',
-            '2.0' => '2.0', '2.1' => '2.1', '2.2' => '2.2', '2.3' => '2.3', '2.4' => '2.4',
-            '2.5' => '2.5', '2.6' => '2.6', '2.7' => '2.7', '2.8' => '2.8', '2.9' => '2.9',
-            '3.0' => '3.0',
-            
-            // Failing and special grades
-            '4.0' => '4.0',
-            '5.0' => '5.0',
-            'INC' => 'INC',
-            'DRP' => 'DRP',
-            'PASS' => 'PASS',
-            'FAIL' => 'FAIL',
-        ];
-        
-        return $gradeMap[$grade] ?? $grade;
-    }
-
-    // helper method to get grade color class for badges
-    private function getGradeColorClass($numericGrade)
-    {
-        if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
-            return 'grade-excellent'; // Green
-        } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
-            return 'grade-good'; // Blue
-        } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
-            return 'grade-passing'; // Yellow
-        } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
-            return 'grade-failing'; // Red
-        } else {
-            return 'grade-special'; // Gray
-        }
-    }
-
-    // Determine academic standing
-    private function getAcademicStanding($gwa)
-    {
-        if ($gwa >= 1.0 && $gwa <= 1.45) {
-            return 'President\'s Lister';
-        } elseif ($gwa >= 1.46 && $gwa <= 1.75) {
-            return 'Dean\'s Lister';
-        } elseif ($gwa >= 1.76 && $gwa <= 2.00) {
-            return 'Academic Achiever';
-        } elseif ($gwa >= 2.01 && $gwa <= 2.75) {
-            return 'Satisfactory';
-        } else {
-            return 'On Probation';
-        }
-    }
-
-
-
-    // private function handleFailedGrade($student_id, $subject_id)
-    // {
-    //     // Check if failed subject already exists
-    //     $failedSubject = FailedSubject::where([
-    //         ['student_id', $student_id],
-    //         ['subject_id', $subject_id]
-    //     ])->first();
-            
-    //     if ($failedSubject) {
-    //         // Increment failure count
-    //         $newCount = intval($failedSubject->how_many) + 1;
-    //         $failedSubject->how_many = (string)$newCount;
-    //         $failedSubject->save();
-    //     } else {
-    //         // Create new failed subject record
-    //         FailedSubject::create([
-    //             'student_id' => $student_id,
-    //             'subject_id' => $subject_id,
-    //             'how_many' => '1'
-    //         ]);
-    //     }
-    // }
-
-
-    // private function cleanupWarningsAndProbation($student_id)
-    // {
-    //     // This method should only remove probation when student has only 2 failed subjects
-    //     // and downgrade warnings if needed, but updateStudentWarnings already handles that
-    //     // So we can simplify or remove this method
-
-        
-    //     // Get current failed subjects count
-    //     $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
-    //     $distinctFailedSubjects = $failedSubjects->count();
-        
-    //     // Remove probation only if student has 2 or fewer distinct failed subjects
-    //     // AND doesn't have a Final Warning
-    //     if ($distinctFailedSubjects <= 2) {
-    //         $hasFinalWarning = StudentWarning::where('student_id', $student_id)
-    //             ->where('warning_type', 'Final Warning')
-    //             ->where('status', 'Active')
-    //             ->exists();
+            private function updateStudentWarnings($student_id)
+            {
+                // Get all failed subjects for this student
+                $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
                 
-    //         if (!$hasFinalWarning) {
-    //             StudentProbation::where('student_id', $student_id)
-    //                 ->where('status', 'Active')
-    //                 ->delete();
-    //         }
-    //     }
-    // }
+                // Count distinct failed subjects
+                $distinctFailedSubjects = $failedSubjects->count();
+                
+                // Calculate total failed attempts (sum of how_many)
+                $totalFailures = $failedSubjects->sum(function($item) {
+                    return intval($item->how_many);
+                });
+                
+                // Determine new warning type based ONLY on distinct failed subjects
+                $newWarningType = null;
+                
+                // Rule 1: If 3 or more distinct subjects failed - Final Warning
+                if ($distinctFailedSubjects >= 3) {
+                    $newWarningType = 'Final Warning';
+                } 
+                // Rule 2: If 2 distinct subjects failed - Second Warning
+                elseif ($distinctFailedSubjects == 2) {
+                    $newWarningType = 'Second Warning';
+                }
+                // Rule 3: If 1 distinct subject failed - First Warning
+                elseif ($distinctFailedSubjects == 1) {
+                    // Check if this single subject failed 3 or more times
+                    $hasTripleFailure = $failedSubjects->contains(function($item) {
+                        return intval($item->how_many) >= 3;
+                    });
+                    
+                    if ($hasTripleFailure) {
+                        $newWarningType = 'Final Warning';
+                    } else {
+                        $newWarningType = 'First Warning';
+                    }
+                }
+                
+                // Get existing active warning
+                $existingWarning = StudentWarning::where('student_id', $student_id)
+                    ->where('status', 'Active')
+                    ->first();
+                
+                if ($newWarningType) {
+                    // Get subject IDs for the reason
+                    $subjectIds = $failedSubjects->pluck('subject_id')->toArray();
+                    $subjectNames = Subject::whereIn('id', $subjectIds)
+                        ->pluck('name')
+                        ->implode(', ');
+                        
+                    $reason = 'Failed in subject(s): ' . $subjectNames . 
+                            ' (Total failures: ' . $totalFailures . 
+                            ', Distinct subjects: ' . $distinctFailedSubjects . ')';
+                    
+                    if ($existingWarning) {
+                        // Update existing warning
+                        $existingWarning->update([
+                            'warning_type' => $newWarningType,
+                            'reason' => $reason,
+                            'related_subject_ids' => implode(',', $subjectIds),
+                            'updated_at' => now()
+                        ]);
+                    } else {
+                        // Create new warning
+                        StudentWarning::create([
+                            'student_id' => $student_id,
+                            'warning_type' => $newWarningType,
+                            'reason' => $reason,
+                            'issued_date' => now(),
+                            'expiry_date' => now()->addYear(),
+                            'status' => 'Active',
+                            'related_subject_ids' => implode(',', $subjectIds),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                    
+                    // Handle probation for Final Warning
+                    if ($newWarningType === 'Final Warning') {
+                        $this->createProbationRecord($student_id);
+                    } elseif ($existingWarning && $existingWarning->warning_type === 'Final Warning' && $newWarningType !== 'Final Warning') {
+                        // If warning was downgraded from Final Warning, remove probation
+                        StudentProbation::where('student_id', $student_id)
+                            ->where('status', 'Active')
+                            ->delete();
+                    }
+                } else {
+                    // No failed subjects - delete any existing warnings and probation
+                    if ($existingWarning) {
+                        $existingWarning->delete();
+                    }
+                    StudentProbation::where('student_id', $student_id)
+                        ->where('status', 'Active')
+                        ->delete();
+                }
+                
+                // Always run cleanup to ensure probation is removed when appropriate
+                $this->cleanupWarningsAndProbation($student_id);
+            }
+
+            private function createProbationRecord($student_id)
+            {
+                // Get current date for SY and SEM calculation
+                $currentYear = date('Y');
+                $currentMonth = date('n'); // 1-12
+                
+                // Calculate School Year and Semester
+                if ($currentMonth >= 7 && $currentMonth <= 12) {
+                    // July to December: First Semester of current school year
+                    $schoolYear = $currentYear . '-' . ($currentYear + 1);
+                    $semester = 'SEM 1';
+                } else {
+                    // January to June: Second Semester of previous school year
+                    $schoolYear = ($currentYear - 1) . '-' . $currentYear;
+                    $semester = 'SEM 2';
+                }
+                
+                $pageTitle = "SY: $schoolYear $semester";
+
+                $sem = $semester;
+                
+                // Check if student is already on probation
+                $existingProbation = StudentProbation::where('student_id', $student_id)
+                    ->whereIn('status', ['Active', 'Pending'])
+                    ->first();
+                    
+                if (!$existingProbation) {
+                    StudentProbation::create([
+                        'student_id' => $student_id,
+                        'reason' => 'Excessive failed subjects - Final Warning issued',
+                        'status' => 'Active',
+                        'credit_limit' => 12, // Reduced credit limit
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+
+            public function getAvailableSubjectsForAddDrop(Request $request)
+            {
+                $user = Auth::guard('student')->user();
+                $student = $user->user_information->student;
+                
+                if (!$student) {
+                    return response()->json(['error' => 'Student not found'], 404);
+                }
+                
+                // Get current enrolled subject IDs
+                $enrolledSubjectIds = EnrolledSubjects::where('student_id', $student->id)
+                    ->pluck('subject_id')
+                    ->toArray();
+
+                $availableSubjects = [];
+
+                // Get the curriculum ID based on the student's curriculum year
+                $curriculum = Curriculum::where('curriculum_year', $student->curriculum)->first();
+
+                if ($curriculum) {
+                    $availableSubjects = Subject::where('curriculum_id', $curriculum->id)
+                        ->where('is_active', 1)
+                        ->whereNotIn('id', $enrolledSubjectIds)
+                        ->orderBy('year_level')
+                        ->orderBy('semester')
+                        ->orderBy('code')
+                        ->get()
+                        ->groupBy('year_level')
+                        ->map(function ($yearSubjects) {
+                            return $yearSubjects->groupBy('semester');
+                        });
+                }
+
+                return response()->json([
+                    'availableSubjects' => $availableSubjects
+                ]);
+            }
+
+            // Add this method to your StudentController
+            public function getEnrolledSubjects(Request $request)
+            {
+                $user = $request->user();
+                $student = Student::where('student_id', $user->id)->first();
+                
+                if (!$student) {
+                    return response()->json(['error' => 'Student not found'], 404);
+                }
+                
+                $action = $request->query('action');
+                
+                if ($action === 'available') {
+                    // Get available subjects (not yet enrolled)
+                    return $this->getAvailableSubjectsForAddDrop($request);
+                }
+                
+                // Otherwise, return enrolled subjects
+                $enrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+                    ->with('subject')
+                    ->get()
+                    ->map(function ($enrolled) {
+                        return [
+                            'subject_id' => $enrolled->subject_id,
+                            'subject_code' => $enrolled->subject->code,
+                            'subject_name' => $enrolled->subject->name,
+                            'units' => $enrolled->subject->units,
+                            'grade' => $enrolled->grade
+                        ];
+                    });
+                
+                return response()->json([
+                    'enrolledSubjects' => $enrolledSubjects
+                ]);
+            }
 
 
-    /**
-     * Get authenticated user
-     */
-    public function user(Request $request)
-    {
-        $user = Auth::guard('student')->user();
-        
-        if ($user) {
-            return response()->json([
-                'success' => true,
-                'user' => [
-                    'id' => $user->id,
-                    'email' => $user->email2,
-                    'type' => $user->user_type,
-                    'profile' => $user->profile,
-                    'full_name' => $user->user_information ? 
-                        $user->user_information->firstname . ' ' . $user->user_information->lastname : null,
-                    'student_id' => $user->student ? $user->student->id_no : null
-                ]
-            ]);
+            // Add this method to StudentController.php
+            private function getGradeColor($numericGrade)
+            {
+                if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+                    return '#28a745'; // Green - Excellent
+                } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.0) {
+                    return '#17a2b8'; // Cyan - Very Good
+                } elseif ($numericGrade >= 2.1 && $numericGrade <= 2.5) {
+                    return '#ffc107'; // Yellow - Good
+                } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+                    return '#fd7e14'; // Orange - Satisfactory
+                } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+                    return '#dc3545'; // Red - Failing
+                } else {
+                    return '#6c757d'; // Gray - Special grades
+                }
+            }
+
+
+            // Add a new method to handle subject enrollment submission. This will be called during first time using the system.
+            public function enrollSubjects(Request $request)
+            {
+                try {
+                    $user = Auth::guard('student')->user();
+                    $student = $user->user_information->student;
+                    $studentID = $student->id;
+
+                    $enrolledSubjects = $request->input('enrolled_subjects');
+
+                    // Validate student exists
+                    $student = Student::where('id', $studentID)->first();
+                    if (!$student) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Student not found'
+                        ]);
+                    }
+
+                    // Validate input
+                    if (empty($enrolledSubjects) || !is_array($enrolledSubjects)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No subjects selected'
+                        ]);
+                    }
+
+                    $enrollments = [];
+                    $totalGradePoints = 0;
+                    $totalUnits = 0;
+
+                    // Get current date parts
+                    $currentYear = date('Y');
+                    $currentMonth = date('n'); // 1-12
+
+                    foreach ($enrolledSubjects as $subject) {
+                        if (!isset($subject['subject_id'], $subject['grade'])) {
+                            continue;
+                        }
+
+                        // Get subject details including its fixed semester
+                        $subjectDetail = Subject::find($subject['subject_id']);
+                        if (!$subjectDetail) {
+                            continue;
+                        }
+
+                        $units = $subjectDetail->units ?: 3; // default to 3 if not set
+                        $subjectSemester = $subjectDetail->semester; // '1st Sem', '2nd Sem', or 'Summer'
+
+                        // Current Year
+                        $currentYear = date('Y');
+
+                        // Determine school year based on subject's semester
+                        $schoolYear = $this->determineSchoolYear($subjectSemester, $currentYear, $currentMonth);
+
+                        // Convert grade to numeric for GWA calculation
+                        $numericGrade = $this->convertGradeToNumeric($subject['grade']);
+
+                        // Save enrollment with correct semester and school year
+                        EnrolledSubjects::create([
+                            'student_id' => $studentID,
+                            'subject_id' => $subject['subject_id'],
+                            'grade'      => $subject['grade'],
+                            'sem'        => $subjectSemester,  // from the subject table
+                            'year'         => $schoolYear
+                        ]);
+
+                        // Accumulate GWA data
+                        $totalGradePoints += ($numericGrade * $units);
+                        $totalUnits += $units;
+
+                        $enrollments[] = [
+                            'subject_id' => $subject['subject_id'],
+                            'grade'      => $subject['grade'],
+                            'units'      => $units,
+                            'semester'   => $subjectSemester,
+                            'year' => $schoolYear
+                        ];
+                    }
+
+                    // Calculate GWA
+                    $gwa = $totalUnits > 0 ? $totalGradePoints / $totalUnits : 0;
+
+                    // Update student status
+                    $student->status = 'Officially Enrolled';
+                    $student->enrolled = 1;
+                    $student->save();
+
+                    RetrainModelsJob::dispatch();
+
+                    return response()->json([
+                        'success'          => true,
+                        'message'          => 'Subjects enrolled successfully',
+                        'gwa'              => number_format($gwa, 2),
+                        'enrollment_count' => count($enrollments)
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: ' . $e->getMessage()
+                    ]);
+                }
+            }
+
+            /**
+             * Determine the school year based on the subject's semester and current date.
+             *
+             * @param string $semester  (e.g., '1st Sem', '2nd Sem', 'Summer')
+             * @param int $year         current year (e.g., 2025)
+             * @param int $month        current month (1-12)
+             * @return string           school year in format "YYYY-YYYY"
+             */
+            private function determineSchoolYear($semester, $year, $month)
+            {
+                switch ($semester) {
+                    case '1st Sem':
+                        // First semester always belongs to the academic year that starts in the current calendar year.
+                        // Example: If today is Jan 2025, the upcoming first semester (Aug 2025) is 2025-2026.
+                        // If today is Aug 2025, the current first semester is also 2025-2026.
+                        return $year . '-' . ($year + 1);
+
+                    case '2nd Sem':
+                        // Second semester starts in January.
+                        // If we are in months January–June, we are in the second semester of the academic year that began last year.
+                        // If we are in months July–December, we are approaching the second semester of the next academic year.
+                        if ($month >= 1 && $month <= 6) {
+                            return ($year - 1) . '-' . $year;
+                        } else {
+                            return $year . '-' . ($year + 1);
+                        }
+
+                    case 'Summer':
+                        // Summer follows the second semester, so use the same logic as second semester.
+                        if ($month >= 1 && $month <= 6) {
+                            return ($year - 1) . '-' . $year;
+                        } else {
+                            return $year . '-' . ($year + 1);
+                        }
+
+                    default:
+                        // Fallback to the global logic you originally used
+                        if ($month >= 7 && $month <= 12) {
+                            return $year . '-' . ($year + 1);
+                        } else {
+                            return ($year - 1) . '-' . $year;
+                        }
+                }
+            }
+            
+
+            // Helper method to convert letter grades to numeric
+            private function convertGradeToNumeric($grade)
+            {
+                $gradeMap = [
+                    // Passing Grades
+                    '1.0' => 1.0, '1.1' => 1.1, '1.2' => 1.2, '1.3' => 1.3, '1.4' => 1.4,
+                    '1.5' => 1.5, '1.6' => 1.6, '1.7' => 1.7, '1.8' => 1.8, '1.9' => 1.9,
+                    '2.0' => 2.0, '2.1' => 2.1, '2.2' => 2.2, '2.3' => 2.3, '2.4' => 2.4,
+                    '2.5' => 2.5, '2.6' => 2.6, '2.7' => 2.7, '2.8' => 2.8, '2.9' => 2.9,
+                    '3.0' => 3.0,
+
+                    // Failing and Special Grades
+                    '4.0' => 4.0, '5.0' => 5.0,
+                    'INC' => 0.0, 'DRP' => 0.0,
+                    
+                    // Original descriptive mappings
+                    'PASS' => 1.0, 'FAIL' => 5.0,
+                ];
+                
+                return $gradeMap[$grade] ?? 0;
+            }
+
+            // helper method to get grade equivalent
+            private function getGradeEquivalent($grade)
+            {
+                $gradeMap = [
+                    // Passing grades
+                    '1.0' => '1.0', '1.1' => '1.1', '1.2' => '1.2', '1.3' => '1.3', '1.4' => '1.4',
+                    '1.5' => '1.5', '1.6' => '1.6', '1.7' => '1.7', '1.8' => '1.8', '1.9' => '1.9',
+                    '2.0' => '2.0', '2.1' => '2.1', '2.2' => '2.2', '2.3' => '2.3', '2.4' => '2.4',
+                    '2.5' => '2.5', '2.6' => '2.6', '2.7' => '2.7', '2.8' => '2.8', '2.9' => '2.9',
+                    '3.0' => '3.0',
+                    
+                    // Failing and special grades
+                    '4.0' => '4.0',
+                    '5.0' => '5.0',
+                    'INC' => 'INC',
+                    'DRP' => 'DRP',
+                    'PASS' => 'PASS',
+                    'FAIL' => 'FAIL',
+                ];
+                
+                return $gradeMap[$grade] ?? $grade;
+            }
+
+            // helper method to get grade color class for badges
+            private function getGradeColorClass($numericGrade)
+            {
+                if ($numericGrade >= 1.0 && $numericGrade <= 1.5) {
+                    return 'grade-excellent'; // Green
+                } elseif ($numericGrade >= 1.6 && $numericGrade <= 2.5) {
+                    return 'grade-good'; // Blue
+                } elseif ($numericGrade >= 2.6 && $numericGrade <= 3.0) {
+                    return 'grade-passing'; // Yellow
+                } elseif ($numericGrade >= 4.0 && $numericGrade <= 5.0) {
+                    return 'grade-failing'; // Red
+                } else {
+                    return 'grade-special'; // Gray
+                }
+            }
+
+            // Determine academic standing
+            private function getAcademicStanding($gwa)
+            {
+                if ($gwa >= 1.0 && $gwa <= 1.45) {
+                    return 'President\'s Lister';
+                } elseif ($gwa >= 1.46 && $gwa <= 1.75) {
+                    return 'Dean\'s Lister';
+                } elseif ($gwa >= 1.76 && $gwa <= 2.00) {
+                    return 'Academic Achiever';
+                } elseif ($gwa >= 2.01 && $gwa <= 2.75) {
+                    return 'Satisfactory';
+                } else {
+                    return 'On Probation';
+                }
+            }
+
+
+
+            // private function handleFailedGrade($student_id, $subject_id)
+            // {
+            //     // Check if failed subject already exists
+            //     $failedSubject = FailedSubject::where([
+            //         ['student_id', $student_id],
+            //         ['subject_id', $subject_id]
+            //     ])->first();
+                    
+            //     if ($failedSubject) {
+            //         // Increment failure count
+            //         $newCount = intval($failedSubject->how_many) + 1;
+            //         $failedSubject->how_many = (string)$newCount;
+            //         $failedSubject->save();
+            //     } else {
+            //         // Create new failed subject record
+            //         FailedSubject::create([
+            //             'student_id' => $student_id,
+            //             'subject_id' => $subject_id,
+            //             'how_many' => '1'
+            //         ]);
+            //     }
+            // }
+
+
+            // private function cleanupWarningsAndProbation($student_id)
+            // {
+            //     // This method should only remove probation when student has only 2 failed subjects
+            //     // and downgrade warnings if needed, but updateStudentWarnings already handles that
+            //     // So we can simplify or remove this method
+
+                
+            //     // Get current failed subjects count
+            //     $failedSubjects = FailedSubject::where('student_id', $student_id)->get();
+            //     $distinctFailedSubjects = $failedSubjects->count();
+                
+            //     // Remove probation only if student has 2 or fewer distinct failed subjects
+            //     // AND doesn't have a Final Warning
+            //     if ($distinctFailedSubjects <= 2) {
+            //         $hasFinalWarning = StudentWarning::where('student_id', $student_id)
+            //             ->where('warning_type', 'Final Warning')
+            //             ->where('status', 'Active')
+            //             ->exists();
+                        
+            //         if (!$hasFinalWarning) {
+            //             StudentProbation::where('student_id', $student_id)
+            //                 ->where('status', 'Active')
+            //                 ->delete();
+            //         }
+            //     }
+            // }
+
+
+            /**
+             * Get authenticated user
+             */
+            public function user(Request $request)
+            {
+                $user = Auth::guard('student')->user();
+                
+                if ($user) {
+                    return response()->json([
+                        'success' => true,
+                        'user' => [
+                            'id' => $user->id,
+                            'email' => $user->email2,
+                            'type' => $user->user_type,
+                            'profile' => $user->profile,
+                            'full_name' => $user->user_information ? 
+                                $user->user_information->firstname . ' ' . $user->user_information->lastname : null,
+                            'student_id' => $user->student ? $user->student->id_no : null
+                        ]
+                    ]);
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Not authenticated'
+                ], 401);
+            }
+
+            /**
+             * Handle forgot password
+             */
+            public function forgotPassword(Request $request)
+            {
+                $validator = Validator::make($request->all(), [
+                    'email' => 'required|email'
+                ]);
+
+                if ($validator->fails()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please enter a valid email address'
+                    ], 422);
+                }
+
+                $user = User::where('email2', $request->email)->first();
+
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Email not found in our system'
+                    ], 404);
+                }
+                
+
+                // Here you would typically:
+                // 1. Generate a password reset token
+                // 2. Send email with reset link
+                // 3. Return success message
+
+                // For now, just return success
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset instructions have been sent to your email.'
+                ]);
+            }
+
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Not authenticated'
-        ], 401);
-    }
-
-    /**
-     * Handle forgot password
-     */
-    public function forgotPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Please enter a valid email address'
-            ], 422);
-        }
-
-        $user = User::where('email2', $request->email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email not found in our system'
-            ], 404);
-        }
-        
-
-        // Here you would typically:
-        // 1. Generate a password reset token
-        // 2. Send email with reset link
-        // 3. Return success message
-
-        // For now, just return success
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset instructions have been sent to your email.'
-        ]);
-    }
-
-}
