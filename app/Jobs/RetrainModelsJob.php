@@ -29,10 +29,18 @@ class RetrainModelsJob implements ShouldQueue
             }
 
             // Determine at_risk label (use your logic)
+            // $atRisk = (
+            //     ($features['failed_subject_count'] > 0) ||
+            //     $features['has_probation'] ||
+            //     ($features['overall_gwa'] !== null && $features['overall_gwa'] > 3.0)
+            // ) ? 1 : 0;
+
             $atRisk = (
-                ($features['failed_subject_count'] > 0) ||
+                ($features['failed_subject_count'] >= 2) ||
+                ($features['failed_subject_count'] == 1 && $features['programming_failures'] > 0) ||
                 $features['has_probation'] ||
-                ($features['overall_gwa'] !== null && $features['overall_gwa'] > 3.0)
+                ($features['overall_gwa'] !== null && $features['overall_gwa'] > 2.5) ||
+                ($features['gpa_trend_slope'] > 0.2 && $features['overall_gwa'] > 2.0)
             ) ? 1 : 0;
 
             // Build feature array (must match Python's expected keys)
@@ -58,7 +66,7 @@ class RetrainModelsJob implements ShouldQueue
             'students' => $trainingData
         ]);
 
-        
+
         if ($response->successful()) {
             Log::info('Model retraining triggered successfully.');
             \Illuminate\Support\Facades\Log::info('Training data', ['data' => $trainingData]);
