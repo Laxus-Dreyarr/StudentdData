@@ -274,11 +274,11 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                             <!--  -->
                             @if(isset($prediction))
                                 <div class="card mb-4">
-                                    <div style="display: none;" class="card-header bg-primary text-white">
+                                    <div class="card-header bg-primary text-white">
                                         <h5>🎓 Academic Risk Prediction</h5>
                                     </div>
                                     <div class="card-body" style="color: black;">
-                                        <div class="row" style="display: none;">
+                                        <div class="row">
                                             <div class="col-md-4">
                                                 <strong>Random Forest Risk:</strong>
                                                 <span class="badge {{ $prediction['rf_risk_probability'] > 0.5 ? 'bg-danger' : 'bg-success' }}">

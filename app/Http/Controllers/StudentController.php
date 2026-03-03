@@ -1051,85 +1051,85 @@ class StudentController extends Controller
                 });
         }
 
-        // Get active warnings for the student
-        $warnings = StudentWarning::where('student_id', $student->id)
-            ->where('status', 'Active')
-            ->orderBy('issued_date', 'desc')
-            ->get();
+            // Get active warnings for the student
+            $warnings = StudentWarning::where('student_id', $student->id)
+                ->where('status', 'Active')
+                ->orderBy('issued_date', 'desc')
+                ->get();
         
-        // Check if student is on probation
-        $probation = StudentProbation::where('student_id', $student->id)
-            ->where('status', 'Active')
-            ->first();
+            // Check if student is on probation
+            $probation = StudentProbation::where('student_id', $student->id)
+                ->where('status', 'Active')
+                ->first();
         
-        // Get incomplete grades
-        $incompleteGrades = IncompleteGrade::where('student_id', $student->id)
-            ->where('status', 'Pending')
-            ->get();
+            // Get incomplete grades
+            $incompleteGrades = IncompleteGrade::where('student_id', $student->id)
+                ->where('status', 'Pending')
+                ->get();
 
-        // 
-        $allEnrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
-            ->with('subject')
-            ->get()
-            ->groupBy(function($enrolled) {
-                $subject = $enrolled->subject;
-                return $subject->year_level . '|' . $subject->semester;
-            });
-
-        // Group enrolled subjects by actual enrollment year and semester for grades display
-        // Get overall GPA for reference (you already have $gwa)
-        $overallGPA = $gwa;
-
-        $groupedGrades = EnrolledSubjects::where('student_id', $student->id)
-            ->with('subject')
-            ->get()
-            ->groupBy(function($enrolled) {
-                return $enrolled->year . '|' . $enrolled->sem;
-            })
-            ->sortBy(function($group, $key) {
-                [$year, $sem] = explode('|', $key);
-                $startYear = (int) explode('-', $year)[0];
-                $semOrder = ['1st Sem' => 1, '2nd Sem' => 2, 'Summer' => 3];
-                $semNumber = $semOrder[$sem] ?? 4;
-                return (-$startYear * 10) + $semNumber;
-            })
-            ->map(function($subjects, $period) use ($overallGPA) {
-                $periodUnits = 0;
-                $periodGradePoints = 0;
-                $processedSubjects = $subjects->map(function($enrolled) use (&$periodUnits, &$periodGradePoints) {
+            // 
+            $allEnrolledSubjects = EnrolledSubjects::where('student_id', $student->id)
+                ->with('subject')
+                ->get()
+                ->groupBy(function($enrolled) {
                     $subject = $enrolled->subject;
-                    $units = $subject->units ?? 3;
-                    $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
-
-                    $enrolled->computed = (object) [
-                        'numeric_grade' => $numericGrade,
-                        'equivalent'    => $this->getGradeEquivalent($enrolled->grade),
-                        'color_class'   => $this->getGradeColorClass($numericGrade),
-                        'units'         => $units,
-                    ];
-
-                    if ($numericGrade > 0) {
-                        $periodGradePoints += $numericGrade * $units;
-                        $periodUnits += $units;
-                    }
-                    return $enrolled;
+                    return $subject->year_level . '|' . $subject->semester;
                 });
 
-                $periodGWA = $periodUnits > 0 ? $periodGradePoints / $periodUnits : 0;
+            // Group enrolled subjects by actual enrollment year and semester for grades display
+            // Get overall GPA for reference (you already have $gwa)
+            $overallGPA = $gwa;
 
-                // Prepare chart data for this semester
-                $chartData = [
-                    'semester_gpa' => round($periodGWA, 2),
-                    'overall_gpa'  => round($overallGPA, 2),
-                ];
+            $groupedGrades = EnrolledSubjects::where('student_id', $student->id)
+                ->with('subject')
+                ->get()
+                ->groupBy(function($enrolled) {
+                    return $enrolled->year . '|' . $enrolled->sem;
+                })
+                ->sortBy(function($group, $key) {
+                    [$year, $sem] = explode('|', $key);
+                    $startYear = (int) explode('-', $year)[0];
+                    $semOrder = ['1st Sem' => 1, '2nd Sem' => 2, 'Summer' => 3];
+                    $semNumber = $semOrder[$sem] ?? 4;
+                    return (-$startYear * 10) + $semNumber;
+                })
+                ->map(function($subjects, $period) use ($overallGPA) {
+                    $periodUnits = 0;
+                    $periodGradePoints = 0;
+                    $processedSubjects = $subjects->map(function($enrolled) use (&$periodUnits, &$periodGradePoints) {
+                        $subject = $enrolled->subject;
+                        $units = $subject->units ?? 3;
+                        $numericGrade = $this->convertGradeToNumeric($enrolled->grade);
 
-                return (object) [
-                    'subjects'   => $processedSubjects,
-                    'periodGWA'  => $periodGWA,
-                    'periodUnits'=> $periodUnits,
-                    'chartData'  => $chartData,   // <-- new
-                ];
-            });
+                        $enrolled->computed = (object) [
+                            'numeric_grade' => $numericGrade,
+                            'equivalent'    => $this->getGradeEquivalent($enrolled->grade),
+                            'color_class'   => $this->getGradeColorClass($numericGrade),
+                            'units'         => $units,
+                        ];
+
+                        if ($numericGrade > 0) {
+                            $periodGradePoints += $numericGrade * $units;
+                            $periodUnits += $units;
+                        }
+                        return $enrolled;
+                    });
+
+                    $periodGWA = $periodUnits > 0 ? $periodGradePoints / $periodUnits : 0;
+
+                    // Prepare chart data for this semester
+                    $chartData = [
+                        'semester_gpa' => round($periodGWA, 2),
+                        'overall_gpa'  => round($overallGPA, 2),
+                    ];
+
+                    return (object) [
+                        'subjects'   => $processedSubjects,
+                        'periodGWA'  => $periodGWA,
+                        'periodUnits'=> $periodUnits,
+                        'chartData'  => $chartData,   // <-- new
+                    ];
+                });
             
 
                 // number of subjects the student has ever failed (unique)
@@ -1250,7 +1250,7 @@ class StudentController extends Controller
                     'groupedGrades'
                 ));
 
-            }
+    }
 
             // Add to StudentController.php
             private function getGradeStatus($numericGrade)
