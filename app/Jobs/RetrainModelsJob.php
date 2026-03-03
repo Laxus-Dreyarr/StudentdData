@@ -35,12 +35,43 @@ class RetrainModelsJob implements ShouldQueue
             //     ($features['overall_gwa'] !== null && $features['overall_gwa'] > 3.0)
             // ) ? 1 : 0;
 
+            // $atRisk = (
+            //     ($features['failed_subject_count'] >= 2) ||
+            //     ($features['failed_subject_count'] == 1 && $features['programming_failures'] > 0) ||
+            //     $features['has_probation'] ||
+            //     ($features['overall_gwa'] !== null && $features['overall_gwa'] > 2.5) ||
+            //     ($features['gpa_trend_slope'] > 0.2 && $features['overall_gwa'] > 2.0)
+            // ) ? 1 : 0;
+            
+            $majorFailures = $features['programming_failures'] ?? 0;
+            $totalFailures = $features['failed_subject_count'] ?? 0;
+            $minorFailures = $totalFailures - $majorFailures;
+            $overallGwa = $features['overall_gwa'] ?? null;
+            $trendSlope = $features['gpa_trend_slope'] ?? 0;
+            $completionRatio = $features['course_completion_ratio'] ?? 1.0; // default to 1 if null
+            $hasProbation = $features['has_probation'] ?? false;
+
             $atRisk = (
-                ($features['failed_subject_count'] >= 2) ||
-                ($features['failed_subject_count'] == 1 && $features['programming_failures'] > 0) ||
-                $features['has_probation'] ||
-                ($features['overall_gwa'] !== null && $features['overall_gwa'] > 2.5) ||
-                ($features['gpa_trend_slope'] > 0.2 && $features['overall_gwa'] > 2.0)
+                // At least two major failures → at risk
+                $majorFailures >= 2 ||
+
+                // One major failure only if overall GWA is below a threshold (e.g., > 2.0)
+                ($majorFailures == 1 && $overallGwa !== null && $overallGwa > 2.0) ||
+
+                // Three or more minor failures → at risk
+                $minorFailures >= 3 ||
+
+                // Completion ratio below 0.70 → at risk (as per notes)
+                ($completionRatio < 0.70) ||
+
+                // On probation → at risk
+                $hasProbation ||
+
+                // Poor overall GWA (e.g., > 2.5)
+                ($overallGwa !== null && $overallGwa > 2.5) ||
+
+                // Strongly declining trend combined with mediocre GWA
+                ($trendSlope > 0.2 && $overallGwa !== null && $overallGwa > 2.0)
             ) ? 1 : 0;
 
             // Build feature array (must match Python's expected keys)

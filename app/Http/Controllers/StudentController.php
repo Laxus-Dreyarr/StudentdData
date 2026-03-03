@@ -1172,39 +1172,43 @@ class StudentController extends Controller
                 }
 
                 // Generate explanations based on features
-                $explanations = [];
-                $overallGpa = $features['overall_gwa'] ?? null;
-                $programmingGpa = $features['programming_gpa'] ?? null;
+                $majorFailures = $features['programming_failures'] ?? 0;
                 $totalFailures = $features['failed_subject_count'] ?? 0;
-                $progFailures = $features['programming_failures'] ?? 0;
-                $gpaTrend = $features['gpa_trend_slope'] ?? 0;
+                $minorFailures = $totalFailures - $majorFailures;
+                $overallGwa = $features['overall_gwa'] ?? null;
+                $trendSlope = $features['gpa_trend_slope'] ?? 0;
                 $completionRatio = $features['course_completion_ratio'] ?? null;
                 $probationFlag = $features['has_probation'] ?? 0;
 
-                if ($overallGpa !== null && $overallGpa > 3.0) {  // adjust threshold as needed
+                // Major failures
+                if ($majorFailures > 0) {
+                    $explanations[] = $majorFailures == 1
+                        ? "Failed a major IT/programming subject."
+                        : "Failed multiple major IT/programming subjects.";
+                }
+                // Minor failures (only if no major failures)
+                elseif ($minorFailures > 0) {
+                    $explanations[] = $minorFailures == 1
+                        ? "Failed a minor subject – still a risk factor."
+                        : "Failed multiple minor subjects.";
+                }
+
+                // GWA threshold
+                if ($overallGwa !== null && $overallGwa > 2.5) {
                     $explanations[] = "Overall GWA indicates academic difficulty.";
                 }
 
-                if ($programmingGpa !== null && $programmingGpa > 3.0) {
-                    $explanations[] = "Weak performance in core IT / programming subjects.";
-                }
-
-                if ($progFailures > 0) {
-                    $explanations[] = $progFailures == 1
-                        ? "Failed a core IT / programming subject."
-                        : "Multiple failed IT core or programming subjects.";
-                } elseif ($totalFailures > 0) {
-                    $explanations[] = "Failed subject(s) in non‑core areas – still a risk factor.";
-                }
-
-                if ($gpaTrend > 0.05) {
+                // Declining trend
+                if ($trendSlope > 0.05) {
                     $explanations[] = "Declining academic performance trend.";
                 }
 
+                // Low completion ratio
                 if ($completionRatio !== null && $completionRatio < 0.70) {
                     $explanations[] = "Low subject completion ratio this term.";
                 }
 
+                // Probation
                 if ($probationFlag) {
                     $explanations[] = "Student is on academic probation.";
                 }
