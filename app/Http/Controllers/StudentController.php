@@ -1386,6 +1386,21 @@ class StudentController extends Controller
                         $currentYear = date('Y');
                         $currentMonth = date('n'); // 1-12
 
+                        // This is for temporary storage for school year
+                                $search_yearLevel = EnrolledSubjects::where('student_id', $student->id)                
+                                    ->orderBy('id', 'desc')
+                                    ->first();
+
+                                if ($search_yearLevel) {
+                                    $parts = explode('-', $search_yearLevel->year);
+                                    $start = (int)$parts[0] + 1;
+                                    $end   = (int)$parts[1] + 1;
+                                    $schoolYear2 = $start . '-' . $end;
+                                } else {
+                                    $schoolYear2 = '1-2';  // or whatever default makes sense
+                                }
+                        // -------------------------------------------------------
+
                         foreach ($request->added_subjects as $subject_id) {
                             // Check if already enrolled
                             $alreadyEnrolled = EnrolledSubjects::where('student_id', $student->id)
@@ -1411,7 +1426,8 @@ class StudentController extends Controller
                                     'subject_id' => $subject_id,
                                     'grade'      => null, // Grade will be set later by instructor
                                     'sem'        => $subjectSemester,
-                                    'year'       => $schoolYear,
+                                    // 'year'       => $schoolYear,
+                                    'year'       => $schoolYear2,
                                 ]);
                             }
                         }
