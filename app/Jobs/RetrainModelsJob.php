@@ -58,6 +58,7 @@ class RetrainModelsJob implements ShouldQueue
             'students' => $trainingData
         ]);
 
+        
         if ($response->successful()) {
             Log::info('Model retraining triggered successfully.');
             \Illuminate\Support\Facades\Log::info('Training data', ['data' => $trainingData]);
