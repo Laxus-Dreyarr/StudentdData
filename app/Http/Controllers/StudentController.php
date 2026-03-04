@@ -701,6 +701,17 @@ class StudentController extends Controller
             }
         }
 
+        // Count domain‑specific failures (IT/NET subjects)
+        $domainFailures = 0;
+        foreach ($failedRecords as $failed) {
+            $subject = $failed->subject;
+            if (!$subject) continue;
+            $code = $subject->code ?? '';
+            if (preg_match('/^IT|^NET/i', $code)) {
+                $domainFailures += intval($failed->how_many);
+            }
+        }
+
         // 7. GPA trend over time
         $gpaTrend = $this->computeGpaTrend($termData);
 
@@ -717,6 +728,7 @@ class StudentController extends Controller
             'course_completion_ratio'   => $completionRatio,
             'failed_subject_count'      => $failedSubjectCount,
             'programming_failures'      => $programmingFailures,
+            'domain_failures'           => $domainFailures,
             'gpa_trend_slope'           => $gpaTrend['slope'],
             'gpa_trend_direction'       => $gpaTrend['direction'],
             'has_probation'             => $hasProbation,
@@ -1172,7 +1184,7 @@ class StudentController extends Controller
                 }
 
                 // Generate explanations based on features
-                $majorFailures = $features['programming_failures'] ?? 0;
+                $majorFailures = $features['domain_failures'] ?? 0;      // now using domain failures
                 $totalFailures = $features['failed_subject_count'] ?? 0;
                 $minorFailures = $totalFailures - $majorFailures;
                 $overallGwa = $features['overall_gwa'] ?? null;
@@ -1180,7 +1192,7 @@ class StudentController extends Controller
                 $completionRatio = $features['course_completion_ratio'] ?? null;
                 $probationFlag = $features['has_probation'] ?? 0;
 
-                // Major failures
+                // Major failures (IT/NET)
                 if ($majorFailures > 0) {
                     $explanations[] = $majorFailures == 1
                         ? "Failed a major IT/programming subject."
