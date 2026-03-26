@@ -73,11 +73,20 @@ async def predict_risk(features: StudentFeatures):
         xgb_prob = xgb_proba[0][1] if xgb_proba.shape[1] > 1 else 0.0
         combined_prob = (rf_prob + xgb_prob) / 2.0
 
+        # Define risk levels based on combined probability
+        # Thresholds can be adjusted as needed
+        if combined_prob <= 0.4:
+            risk_level = "low"
+        elif combined_prob <= 0.7:
+            risk_level = "medium"
+        else:
+            risk_level = "high"
+
         return {
             "rf_risk_probability": float(rf_prob),
             "xgb_risk_probability": float(xgb_prob),
             "combined_risk_probability": float(combined_prob),
-            "risk_level": "high" if combined_prob > 0.5 else "low"
+            "risk_level": risk_level
         }
     except Exception as e:
         logger.exception("Prediction error")
@@ -156,6 +165,9 @@ async def health():
 # venv\Scripts\activate
 # cd C:\xampp\htdocs\StudentData-V2\app\python-api
 # (venv) C:\xampp\htdocs\StudentData-V2\app\python-api>uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+#For PHP
+# C:\xampp\php\php.exe artisan serve
 
 #during queue work, make sure to have the API running in another terminal, and then run the following command to start processing jobs:
 #php artisan queue:work

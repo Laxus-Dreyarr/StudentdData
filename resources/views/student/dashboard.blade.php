@@ -300,8 +300,15 @@ $user_avatar = strtoupper(substr($user->user_information->firstname, 0, 1) . sub
                                         </div>
                                         <div class="mt-3">
                                             <strong>Risk Level:</strong>
-                                            <span class="badge {{ $prediction['risk_level'] == 'high' ? 'bg-danger' : 'bg-success' }}">
-                                                {{ ucfirst($prediction['risk_level']) }}
+                                            @php
+                                                $riskClass = match($prediction['risk_level'] ?? 'low') {
+                                                    'high' => 'bg-danger',
+                                                    'medium' => 'bg-warning text-dark',
+                                                    default => 'bg-success'
+                                                };
+                                            @endphp
+                                            <span class="badge {{ $riskClass }}">
+                                                {{ ucfirst($prediction['risk_level'] ?? 'low') }}
                                             </span>
                                         </div>
 
