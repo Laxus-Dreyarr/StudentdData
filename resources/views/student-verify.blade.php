@@ -505,6 +505,7 @@ $password = $registerData['password'];
         <div class="verification-header">
             <h1 class="verification-title">Student Registration Verification</h1>
             <p class="verification-subtitle">Please enter the 6-digit verification code sent to your email</p>
+            <p>{{ $otp }}</p>
         </div>
         
         <!-- Student Information Display -->
